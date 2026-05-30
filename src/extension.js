@@ -162,6 +162,24 @@ function activate(context) {
         statusBarItem.backgroundColor = undefined;
     });
     context.subscriptions.push(stopMonitorCmd);
+
+    // 6. Command: Install Python Helper via pip
+    const installPythonHelperCmd = vscode.commands.registerCommand('modelsight.installPythonHelper', () => {
+        const config = vscode.workspace.getConfiguration('modelsight');
+        const pythonPath = config.get('pythonPath') || 'python';
+        const extensionPath = context.extensionPath;
+        
+        vscode.window.showInformationMessage(`Installing ModelSight Python Helper into: ${pythonPath}`);
+        
+        const terminalName = "ModelSight Installer";
+        let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+        if (!terminal) {
+            terminal = vscode.window.createTerminal(terminalName);
+        }
+        terminal.show();
+        terminal.sendText(`"${pythonPath}" -m pip install "${extensionPath}"`);
+    });
+    context.subscriptions.push(installPythonHelperCmd);
 }
 
 /**

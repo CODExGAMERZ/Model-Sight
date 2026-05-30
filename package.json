@@ -2,7 +2,7 @@
   "name": "modelsight",
   "displayName": "ModelSight",
   "description": "Local-first visual training dashboard and ML error explainer for AI/ML students.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "CODExGAMERZ",
   "icon": "media/logo.png",
   "repository": {
@@ -39,7 +39,8 @@
   "activationEvents": [
     "onCommand:modelsight.openDashboard",
     "onCommand:modelsight.runMonitor",
-    "onCommand:modelsight.stopMonitor"
+    "onCommand:modelsight.stopMonitor",
+    "onCommand:modelsight.installPythonHelper"
   ],
   "contributes": {
     "commands": [
@@ -56,6 +57,11 @@
       {
         "command": "modelsight.stopMonitor",
         "title": "ModelSight: Stop Training Monitor",
+        "category": "ModelSight"
+      },
+      {
+        "command": "modelsight.installPythonHelper",
+        "title": "ModelSight: Install Python Helper",
         "category": "ModelSight"
       }
     ],
