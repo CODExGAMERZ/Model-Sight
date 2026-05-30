@@ -1,9 +1,0 @@
-LICENSE
-README.md
-modelsight.py
-pyproject.toml
-setup.py
-modelsight.egg-info/PKG-INFO
-modelsight.egg-info/SOURCES.txt
-modelsight.egg-info/dependency_links.txt
-modelsight.egg-info/top_level.txt
