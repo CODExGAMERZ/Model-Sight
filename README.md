@@ -60,8 +60,11 @@ Keep track of critical metrics as your training runs progress. The metrics row d
 ### Step 1: Install the Extension
 Install **ModelSight** from the VS Code Extensions Marketplace (`Ctrl+Shift+X`) or install the packaged `.vsix` file manually.
 
-### Step 2: Add the Python Helper
-Copy [**`modelsight.py`**](modelsight.py) into your project directory. Because it relies entirely on Python's standard library, you do not need to `pip install` anything.
+### Step 2: Use the Python Helper
+You do not need to install any external packages! 
+
+* **Automatic Mode (Run with Monitor)**: When running your training script via the ModelSight play button or context menu in VS Code, the extension automatically configures the environment. You can immediately call `import modelsight` without copying any files!
+* **Manual Mode (External Terminals / Jupyter Notebooks)**: If running outside VS Code's monitor command, copy [**`modelsight.py`**](modelsight.py) into your script or notebook folder so that Python can resolve the import.
 
 #### 1. Standard PyTorch/Custom Training Loop
 ```python
