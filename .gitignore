@@ -17,6 +17,14 @@ __pycache__/
 venv/
 env/
 ENV/
+build/
+dist/
+*.egg-info/
+
+# Temporary test/check scripts
+check_extension.py
+check_extension.js
+test_modelsight.py
 
 # OS/System files
 .DS_Store
