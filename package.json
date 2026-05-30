@@ -1,0 +1,84 @@
+{
+  "name": "modelsight",
+  "displayName": "ModelSight",
+  "description": "Local-first visual training dashboard and ML error explainer for AI/ML students.",
+  "version": "1.0.0",
+  "publisher": "CODExGAMERZ",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CODExGAMERZ/ModelSight.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CODExGAMERZ/ModelSight/issues"
+  },
+  "homepage": "https://github.com/CODExGAMERZ/ModelSight#readme",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Visualization",
+    "Education",
+    "Linters"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "modelsight.openDashboard",
+        "title": "ModelSight: Open Dashboard",
+        "category": "ModelSight"
+      },
+      {
+        "command": "modelsight.runMonitor",
+        "title": "ModelSight: Run Python Script with Monitor",
+        "category": "ModelSight"
+      },
+      {
+        "command": "modelsight.stopMonitor",
+        "title": "ModelSight: Stop Training Monitor",
+        "category": "ModelSight"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "modelsight.runMonitor",
+          "group": "navigation",
+          "when": "resourceExtname == '.py'"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "modelsight.runMonitor",
+          "group": "navigation",
+          "when": "resourceExtname == '.py'"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "modelsight.runMonitor",
+          "group": "navigation",
+          "when": "resourceExtname == '.py'"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ModelSight",
+      "properties": {
+        "modelsight.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to Python executable used for running monitored scripts."
+        },
+        "modelsight.autoOpenDashboard": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open the dashboard when a training monitor starts."
+        }
+      }
+    }
+  }
+}
