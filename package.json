@@ -6,12 +6,12 @@
   "publisher": "CODExGAMERZ",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CODExGAMERZ/ModelSight.git"
+    "url": "https://github.com/CODExGAMERZ/Model-Sight.git"
   },
   "bugs": {
-    "url": "https://github.com/CODExGAMERZ/ModelSight/issues"
+    "url": "https://github.com/CODExGAMERZ/Model-Sight/issues"
   },
-  "homepage": "https://github.com/CODExGAMERZ/ModelSight#readme",
+  "homepage": "https://github.com/CODExGAMERZ/Model-Sight#readme",
   "license": "MIT",
   "engines": {
     "vscode": "^1.70.0"
