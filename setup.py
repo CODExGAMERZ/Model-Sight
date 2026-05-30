@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="modelsight",
-    version="1.0.4",
+    version="1.0.5",
     py_modules=["modelsight"],
     description="ModelSight Python Telemetry Helper",
     long_description="ModelSight is a lightweight training monitor and ML error explainer. This is the companion Python helper module.",

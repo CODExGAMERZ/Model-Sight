@@ -245,6 +245,13 @@ function startTelemetryServer(context) {
                 try {
                     const metric = JSON.parse(body);
 
+                    // If we recently stopped a training run, ignore HTTP telemetry for 2 seconds to discard late/zombie requests
+                    if (monitor.lastStoppedTime && (Date.now() - monitor.lastStoppedTime) < 2000) {
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ status: 'ignored' }));
+                        return;
+                    }
+
                     // If we are already running a monitored script, ignore HTTP telemetry to avoid duplication
                     if (monitor.isTraining && monitor.scriptName !== "Jupyter Notebook") {
                         res.writeHead(200, { 'Content-Type': 'application/json' });

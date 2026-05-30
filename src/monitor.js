@@ -17,6 +17,7 @@ class TrainingMonitor {
         this.stderrBuffer = "";
         this.isTraining = false;
         this.scriptName = "";
+        this.lastStoppedTime = 0;
         
         // Callback handlers registered by the dashboard
         this.onMetricCallback = null;
@@ -208,8 +209,19 @@ class TrainingMonitor {
     stop() {
         if (this.process) {
             this.outputChannel.appendLine(`\n[ModelSight] Stopping training run...`);
-            // On Windows, taskkill might be cleaner for process trees, but simple kill works for most python scripts
-            this.process.kill('SIGINT');
+            this.lastStoppedTime = Date.now();
+            
+            if (process.platform === 'win32') {
+                const { exec } = require('child_process');
+                exec(`taskkill /pid ${this.process.pid} /T /F`, (err) => {
+                    if (err) {
+                        try { this.process.kill('SIGINT'); } catch (e) {}
+                    }
+                });
+            } else {
+                this.process.kill('SIGINT');
+            }
+            
             this.isTraining = false;
             this.process = null;
             if (this.onStatusCallback) this.onStatusCallback({ isTraining: false, scriptName: "" });
