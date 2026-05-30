@@ -103,7 +103,7 @@ function activate(context) {
         statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
 
         // Fire process monitor
-        monitor.start(scriptPath, {
+        monitor.start(scriptPath, context.extensionPath, {
             onMetric: (metric, history) => {
                 const activePanel = panel || DashboardPanel.currentPanel;
                 if (activePanel) {

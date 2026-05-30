@@ -29,9 +29,10 @@ class TrainingMonitor {
      * Start monitoring a python script.
      * 
      * @param {string} scriptPath - Absolute path to the python script.
+     * @param {string} extensionPath - Absolute path to the extension folder.
      * @param {object} callbacks - Event callbacks.
      */
-    start(scriptPath, callbacks) {
+    start(scriptPath, extensionPath, callbacks) {
         if (this.isTraining) {
             vscode.window.showWarningMessage("ModelSight is already monitoring a training run.");
             return;
@@ -67,6 +68,14 @@ class TrainingMonitor {
 
         // Spawn process in python unbuffered mode so stdout streams in real-time
         const env = { ...process.env, PYTHONUNBUFFERED: "1" };
+        if (extensionPath) {
+            const separator = process.platform === 'win32' ? ';' : ':';
+            if (env.PYTHONPATH) {
+                env.PYTHONPATH = `${extensionPath}${separator}${env.PYTHONPATH}`;
+            } else {
+                env.PYTHONPATH = extensionPath;
+            }
+        }
         
         try {
             // Quote the script path to handle folder directories containing spaces safely
