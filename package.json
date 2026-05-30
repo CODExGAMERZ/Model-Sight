@@ -22,8 +22,24 @@
     "Education",
     "Linters"
   ],
+  "keywords": [
+    "machine learning",
+    "deep learning",
+    "pytorch",
+    "tensorflow",
+    "telemetry",
+    "dashboard",
+    "gpu",
+    "ram",
+    "monitor",
+    "error explainer"
+  ],
   "main": "./src/extension.js",
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:modelsight.openDashboard",
+    "onCommand:modelsight.runMonitor",
+    "onCommand:modelsight.stopMonitor"
+  ],
   "contributes": {
     "commands": [
       {
