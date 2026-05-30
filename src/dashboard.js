@@ -72,6 +72,9 @@ class DashboardPanel {
                         const ext2 = require('./extension');
                         ext2.clearRunsHistory();
                         break;
+                    case 'showWarning':
+                        vscode.window.showWarningMessage(message.text);
+                        break;
                 }
             },
             null,

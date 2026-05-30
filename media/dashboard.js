@@ -780,10 +780,9 @@
         });
     }
 
-    // Compile self-contained HTML report with CSS styling and inline charts
     function exportHTMLReport() {
         if (metricsHistory.length === 0) {
-            alert("No training telemetry logs available to export.");
+            vscode.postMessage({ command: 'showWarning', text: "No training telemetry logs available to export." });
             return;
         }
 

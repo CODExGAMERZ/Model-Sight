@@ -78,9 +78,8 @@ class TrainingMonitor {
         }
         
         try {
-            // Quote the script path to handle folder directories containing spaces safely
-            const quotedScript = `"${scriptPath}"`;
-            this.process = spawn(pythonPath, [quotedScript], {
+            // Node.js automatically handles spaces in arguments; do not manually quote them.
+            this.process = spawn(pythonPath, [scriptPath], {
                 cwd: path.dirname(scriptPath),
                 env: env,
                 shell: true // standard behavior on Windows/macOS
