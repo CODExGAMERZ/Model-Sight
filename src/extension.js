@@ -23,6 +23,27 @@ function activate(context) {
     extensionContext = context;
     console.log('[ModelSight] Extension is now activating.');
 
+    // 0. Auto-copy modelsight.py helper to workspace roots
+    const config = vscode.workspace.getConfiguration('modelsight');
+    const autoCopy = config.get('autoCopyHelper') !== false;
+    if (autoCopy) {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (workspaceFolders) {
+            for (const folder of workspaceFolders) {
+                const destPath = path.join(folder.uri.fsPath, 'modelsight.py');
+                const sourcePath = path.join(context.extensionPath, 'modelsight.py');
+                if (fs.existsSync(sourcePath) && !fs.existsSync(destPath)) {
+                    try {
+                        fs.copyFileSync(sourcePath, destPath);
+                        console.log(`[ModelSight] Auto-copied modelsight.py to workspace root: ${folder.uri.fsPath}`);
+                    } catch (err) {
+                        console.error(`[ModelSight] Failed to auto-copy modelsight.py to workspace root:`, err);
+                    }
+                }
+            }
+        }
+    }
+
     // 1. Initialize Status Bar Item
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.text = "$(graph) ModelSight: Idle";
@@ -101,6 +122,20 @@ function activate(context) {
         statusBarItem.text = "$(pulse) ModelSight: Training...";
         statusBarItem.tooltip = 'Training script is running. Click to view Dashboard.';
         statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+
+        // Auto-copy helper to script's directory if enabled
+        if (config.get('autoCopyHelper') !== false) {
+            const destPath = path.join(path.dirname(scriptPath), 'modelsight.py');
+            const sourcePath = path.join(context.extensionPath, 'modelsight.py');
+            if (fs.existsSync(sourcePath) && !fs.existsSync(destPath)) {
+                try {
+                    fs.copyFileSync(sourcePath, destPath);
+                    console.log(`[ModelSight] Auto-copied modelsight.py to script dir: ${path.dirname(scriptPath)}`);
+                } catch (err) {
+                    console.error(`[ModelSight] Failed to auto-copy modelsight.py to script dir:`, err);
+                }
+            }
+        }
 
         // Fire process monitor
         monitor.start(scriptPath, context.extensionPath, {

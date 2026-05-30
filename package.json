@@ -2,7 +2,7 @@
   "name": "modelsight",
   "displayName": "ModelSight",
   "description": "Local-first visual training dashboard and ML error explainer for AI/ML students.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "publisher": "CODExGAMERZ",
   "icon": "media/logo.png",
   "repository": {
@@ -100,6 +100,11 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically open the dashboard when a training monitor starts."
+        },
+        "modelsight.autoCopyHelper": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically copy the modelsight.py helper to your workspace roots and monitored script folders."
         }
       }
     }
