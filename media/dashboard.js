@@ -21,6 +21,12 @@
     const clearBtn = document.getElementById('clear-btn');
     const exportBtn = document.getElementById('export-btn');
 
+    // New workspace tab navigation
+    const wTabButtons = document.querySelectorAll('.w-tab-btn');
+    const wTabContents = document.querySelectorAll('.w-tab-content');
+    const tbBadge = document.getElementById('tb-badge');
+    const wandbBadge = document.getElementById('wandb-badge');
+
     const valLoss = document.getElementById('val-loss');
     const footerLoss = document.getElementById('footer-loss');
     const valAccuracy = document.getElementById('val-accuracy');
@@ -28,11 +34,35 @@
     const valLr = document.getElementById('val-lr');
     const footerLr = document.getElementById('footer-lr');
     const valGpu = document.getElementById('val-gpu');
-    const barGpu = document.getElementById('bar-gpu');
     const valRam = document.getElementById('val-ram');
     const barRam = document.getElementById('bar-ram');
     const valOverfit = document.getElementById('val-overfit');
     const barOverfit = document.getElementById('bar-overfit');
+
+    // Detailed GPU Info DOM elements
+    const valGpuName = document.getElementById('val-gpu-name');
+    const valGpuTemp = document.getElementById('val-gpu-temp');
+    const valGpuPower = document.getElementById('val-gpu-power');
+    const valGpuVram = document.getElementById('val-gpu-vram');
+    const barGpuVram = document.getElementById('bar-gpu-vram');
+
+    // LLM Specific Cards
+    const llmMetricsRow = document.getElementById('llm-metrics-row');
+    const valPerplexity = document.getElementById('val-perplexity');
+    const valTps = document.getElementById('val-tps');
+
+    // Dataset Profile
+    const datasetNameBadge = document.getElementById('dataset-name-badge');
+    const datasetSamples = document.getElementById('dataset-samples');
+    const datasetShape = document.getElementById('dataset-shape');
+    const datasetClassesTbody = document.getElementById('dataset-classes-tbody');
+    const datasetDistributionSvg = document.getElementById('dataset-distribution-svg');
+
+    // Run Comparison Matrix
+    const comparisonPlaceholder = document.getElementById('comparison-placeholder');
+    const comparisonTable = document.getElementById('comparison-table');
+    const comparisonHeaderRow = document.getElementById('comparison-header-row');
+    const comparisonTbody = document.getElementById('comparison-tbody');
 
     const etaBanner = document.getElementById('eta-banner');
     const valEta = document.getElementById('val-eta');
@@ -137,6 +167,32 @@
         });
     });
 
+    // Workspace Tab Switching
+    wTabButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            wTabButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const targetTab = btn.getAttribute('data-w-tab');
+            wTabContents.forEach(content => {
+                if (content.id === `tab-content-${targetTab}`) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+            
+            if (targetTab === 'telemetry') {
+                updateViewportDimensions();
+                scheduleChartUpdate();
+            } else if (targetTab === 'dataset') {
+                updateDatasetUI();
+            } else if (targetTab === 'comparison') {
+                updateComparisonMatrix();
+            }
+        });
+    });
+
     let resizeTimeout = null;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
@@ -183,7 +239,13 @@
         valLr.textContent = '-';
         footerLr.textContent = 'No data received';
         valGpu.textContent = '-';
-        barGpu.style.width = '0%';
+        
+        if (valGpuName) valGpuName.textContent = 'No GPU detected';
+        if (valGpuTemp) valGpuTemp.textContent = 'Temp: -';
+        if (valGpuPower) valGpuPower.textContent = 'Power: -';
+        if (valGpuVram) valGpuVram.textContent = '- / - MB';
+        if (barGpuVram) barGpuVram.style.width = '0%';
+
         valRam.textContent = '-';
         barRam.style.width = '0%';
         if (valOverfit && barOverfit) {
@@ -193,6 +255,15 @@
         }
         window._lastCheckpointName = null;
         window._lastCheckpointTime = null;
+        window._activeDatasetProfile = null;
+        window._activeRunConfig = null;
+        
+        updateDatasetUI();
+        updateComparisonMatrix();
+
+        if (tbBadge) tbBadge.classList.add('hidden');
+        if (wandbBadge) wandbBadge.classList.add('hidden');
+        if (llmMetricsRow) llmMetricsRow.classList.add('hidden');
 
         valEta.textContent = 'Calculating ETA...';
         barProgress.style.width = '0%';
@@ -248,6 +319,24 @@
 
     function handleNewMetric(current, history) {
         metricsHistory = history;
+
+        if (current.tensorboard_active !== undefined) {
+            if (current.tensorboard_active) tbBadge.classList.remove('hidden');
+            else tbBadge.classList.add('hidden');
+        }
+        if (current.wandb_active !== undefined) {
+            if (current.wandb_active) wandbBadge.classList.remove('hidden');
+            else wandbBadge.classList.add('hidden');
+        }
+        if (current.config !== undefined) {
+            window._activeRunConfig = current.config;
+            updateComparisonMatrix();
+        }
+        if (current.dataset_profile !== undefined) {
+            window._activeDatasetProfile = current.dataset_profile;
+            updateDatasetUI();
+        }
+
         updateMetricsUI(current);
         scheduleChartUpdate();
         checkOverfitting();
@@ -293,13 +382,28 @@
             footerLr.textContent = 'Currently active';
         }
 
-        // 4. GPU Usage Card
+        // 4. GPU Usage Card & Details
         if (current.gpu_usage !== undefined) {
             valGpu.textContent = `${Math.round(current.gpu_usage)}%`;
-            barGpu.style.width = `${Math.min(100, current.gpu_usage)}%`;
         } else {
             valGpu.textContent = 'N/A';
-            barGpu.style.width = '0%';
+        }
+
+        if (current.gpu_name !== undefined && valGpuName) {
+            valGpuName.textContent = current.gpu_name;
+        }
+        if (current.gpu_temp !== undefined && valGpuTemp) {
+            valGpuTemp.textContent = `Temp: ${Math.round(current.gpu_temp)}°C`;
+        }
+        if (current.gpu_power !== undefined && valGpuPower) {
+            valGpuPower.textContent = current.gpu_power ? `Power: ${Math.round(current.gpu_power)}W` : 'Power: N/A';
+        }
+        if (current.gpu_mem_used !== undefined && current.gpu_mem_total !== undefined && valGpuVram && barGpuVram) {
+            const usedGB = (current.gpu_mem_used / 1024).toFixed(1);
+            const totalGB = (current.gpu_mem_total / 1024).toFixed(1);
+            valGpuVram.textContent = `${usedGB} / ${totalGB} GB`;
+            const vramPct = (current.gpu_mem_used / current.gpu_mem_total) * 100;
+            barGpuVram.style.width = `${Math.min(100, vramPct)}%`;
         }
 
         // 4b. RAM Usage Card
@@ -309,6 +413,17 @@
         } else {
             valRam.textContent = 'N/A';
             barRam.style.width = '0%';
+        }
+
+        // 4c. LLM specific metrics card
+        if ((current.perplexity !== undefined || current.tokens_per_sec !== undefined) && llmMetricsRow) {
+            llmMetricsRow.classList.remove('hidden');
+            if (current.perplexity !== undefined && valPerplexity) {
+                valPerplexity.textContent = current.perplexity.toFixed(2);
+            }
+            if (current.tokens_per_sec !== undefined && valTps) {
+                valTps.textContent = Math.round(current.tokens_per_sec).toLocaleString();
+            }
         }
 
         // 5. ETA / Progress Banner
@@ -492,6 +607,7 @@
                     overlayRunIds.delete(run.id);
                 }
                 scheduleChartUpdate();
+                updateComparisonMatrix();
             });
 
             historyList.appendChild(li);
@@ -785,6 +901,299 @@
                 }
             }
         });
+    }
+
+    function updateDatasetUI() {
+        const profile = window._activeDatasetProfile;
+        if (!profile) {
+            if (datasetNameBadge) datasetNameBadge.textContent = "No Dataset Logged";
+            if (datasetSamples) datasetSamples.textContent = "-";
+            if (datasetShape) datasetShape.textContent = "-";
+            if (datasetClassesTbody) {
+                datasetClassesTbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No dataset profile logs received. Call <code>modelsight.log_dataset(...)</code> to profile your dataset.</td>
+                    </tr>
+                `;
+            }
+            if (datasetDistributionSvg) {
+                datasetDistributionSvg.innerHTML = `
+                    <text x="50%" y="50%" text-anchor="middle" fill="var(--text-muted)" font-size="11">No distribution data</text>
+                `;
+            }
+            return;
+        }
+
+        if (datasetNameBadge) datasetNameBadge.textContent = profile.name || "Dataset";
+        if (datasetSamples) datasetSamples.textContent = profile.num_samples !== undefined ? profile.num_samples.toLocaleString() : "Unknown";
+        if (datasetShape) datasetShape.textContent = profile.feature_shape ? `(${profile.feature_shape.join(', ')})` : "N/A";
+
+        // Render table
+        if (profile.classes && profile.class_counts) {
+            let total = profile.class_counts.reduce((a, b) => a + b, 0);
+            if (total === 0) total = 1;
+            
+            let tbodyHtml = "";
+            profile.classes.forEach((className, idx) => {
+                const count = profile.class_counts[idx];
+                const pct = ((count / total) * 100).toFixed(1);
+                tbodyHtml += `
+                    <tr>
+                        <td style="padding: 0.5rem; color: var(--text-primary); font-weight: 500;">${className}</td>
+                        <td style="padding: 0.5rem; text-align: right; font-family: var(--font-mono);">${count.toLocaleString()}</td>
+                        <td style="padding: 0.5rem; text-align: right; color: var(--accent-secondary); font-family: var(--font-mono);">${pct}%</td>
+                    </tr>
+                `;
+            });
+            if (datasetClassesTbody) datasetClassesTbody.innerHTML = tbodyHtml;
+            
+            // Draw distribution SVG
+            renderDatasetDistribution();
+        } else {
+            if (datasetClassesTbody) {
+                datasetClassesTbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Dataset metadata logged, but no label distribution counts were calculated.</td>
+                    </tr>
+                `;
+            }
+            if (datasetDistributionSvg) {
+                datasetDistributionSvg.innerHTML = `
+                    <text x="50%" y="50%" text-anchor="middle" fill="var(--text-muted)" font-size="11">No label class distribution counts provided</text>
+                `;
+            }
+        }
+    }
+
+    function renderDatasetDistribution() {
+        const profile = window._activeDatasetProfile;
+        if (!profile || !profile.classes || !profile.class_counts || !datasetDistributionSvg) return;
+
+        const svg = datasetDistributionSvg;
+        svg.innerHTML = "";
+
+        const width = svg.clientWidth || 300;
+        const height = svg.clientHeight || 250;
+        
+        const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+        const chartWidth = width - padding.left - padding.right;
+        const chartHeight = height - padding.top - padding.bottom;
+
+        const maxVal = Math.max(...profile.class_counts, 1);
+        const colCount = profile.classes.length;
+        const colWidth = chartWidth / Math.max(1, colCount);
+        const barPadding = Math.max(4, colWidth * 0.15);
+
+        // Draw axes
+        const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        xAxis.setAttribute('x1', padding.left);
+        xAxis.setAttribute('y1', height - padding.bottom);
+        xAxis.setAttribute('x2', width - padding.right);
+        xAxis.setAttribute('y2', height - padding.bottom);
+        xAxis.setAttribute('stroke', 'rgba(255,255,255,0.12)');
+        xAxis.setAttribute('stroke-width', '1.5');
+        svg.appendChild(xAxis);
+
+        const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        yAxis.setAttribute('x1', padding.left);
+        yAxis.setAttribute('y1', padding.top);
+        yAxis.setAttribute('x2', padding.left);
+        yAxis.setAttribute('y2', height - padding.bottom);
+        yAxis.setAttribute('stroke', 'rgba(255,255,255,0.12)');
+        yAxis.setAttribute('stroke-width', '1.5');
+        svg.appendChild(yAxis);
+
+        // Draw bars
+        profile.classes.forEach((className, idx) => {
+            const val = profile.class_counts[idx];
+            const barHeight = (val / maxVal) * chartHeight;
+            const x = padding.left + idx * colWidth + barPadding;
+            const y = height - padding.bottom - barHeight;
+            const w = colWidth - 2 * barPadding;
+
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', x);
+            rect.setAttribute('y', y);
+            rect.setAttribute('width', Math.max(2, w));
+            rect.setAttribute('height', Math.max(2, barHeight));
+            rect.setAttribute('fill', 'url(#bar-grad)');
+            rect.setAttribute('rx', '4');
+            
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+            title.textContent = `Class: ${className}\nCount: ${val.toLocaleString()}`;
+            rect.appendChild(title);
+            svg.appendChild(rect);
+
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', x + w / 2);
+            text.setAttribute('y', height - padding.bottom + 16);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('fill', 'var(--text-muted)');
+            text.setAttribute('font-size', '9px');
+            
+            let displayName = className;
+            if (displayName.length > 8) displayName = displayName.slice(0, 6) + '..';
+            text.textContent = displayName;
+            svg.appendChild(text);
+        });
+
+        // Add gradient defs
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        grad.setAttribute('id', 'bar-grad');
+        grad.setAttribute('x1', '0%');
+        grad.setAttribute('y1', '0%');
+        grad.setAttribute('x2', '0%');
+        grad.setAttribute('y2', '100%');
+        
+        const s1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        s1.setAttribute('offset', '0%');
+        s1.setAttribute('stop-color', 'var(--accent-secondary)');
+        s1.setAttribute('stop-opacity', '0.85');
+        
+        const s2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        s2.setAttribute('offset', '100%');
+        s2.setAttribute('stop-color', 'var(--accent-primary)');
+        s2.setAttribute('stop-opacity', '0.4');
+
+        grad.appendChild(s1);
+        grad.appendChild(s2);
+        defs.appendChild(grad);
+        svg.appendChild(defs);
+    }
+
+    function updateComparisonMatrix() {
+        if (!comparisonPlaceholder || !comparisonTable || !comparisonHeaderRow || !comparisonTbody) return;
+
+        if (overlayRunIds.size === 0 && metricsHistory.length === 0) {
+            comparisonPlaceholder.classList.remove('hidden');
+            comparisonTable.classList.add('hidden');
+            return;
+        }
+
+        const selectedRuns = [];
+        // Add active run if there is training data
+        if (metricsHistory.length > 0) {
+            let activeConfig = window._activeRunConfig;
+            if (!activeConfig) {
+                const configPt = metricsHistory.find(h => h.config !== undefined);
+                if (configPt) activeConfig = configPt.config;
+            }
+            
+            let bestAcc = 0;
+            let minLoss = Infinity;
+            metricsHistory.forEach(h => {
+                if (h.accuracy !== undefined && h.accuracy > bestAcc) bestAcc = h.accuracy;
+                if (h.loss !== undefined && h.loss < minLoss) minLoss = h.loss;
+            });
+            if (minLoss === Infinity) minLoss = null;
+
+            selectedRuns.push({
+                id: 'active',
+                name: (activeScriptName.textContent || 'Current Run') + ' (Live)',
+                config: activeConfig || {},
+                bestAcc: bestAcc,
+                minLoss: minLoss,
+                duration: metricsHistory.length > 1 ? Math.round((metricsHistory[metricsHistory.length - 1].timestamp - metricsHistory[0].timestamp) / 1000) : 0,
+                isLive: true
+            });
+        }
+
+        // Add checked overlay runs
+        overlayRunIds.forEach(id => {
+            const run = pastRuns.find(r => r.id === id);
+            if (run) {
+                const configPt = run.history.find(h => h.config !== undefined);
+                const runConfig = configPt ? configPt.config : (run.config || {});
+                
+                let bestAcc = 0;
+                let minLoss = Infinity;
+                run.history.forEach(h => {
+                    if (h.accuracy !== undefined && h.accuracy > bestAcc) bestAcc = h.accuracy;
+                    if (h.loss !== undefined && h.loss < minLoss) minLoss = h.loss;
+                });
+                if (minLoss === Infinity) minLoss = null;
+
+                selectedRuns.push({
+                    id: run.id,
+                    name: run.scriptName,
+                    config: runConfig,
+                    bestAcc: bestAcc,
+                    minLoss: minLoss,
+                    duration: run.duration,
+                    isLive: false
+                });
+            }
+        });
+
+        if (selectedRuns.length === 0) {
+            comparisonPlaceholder.classList.remove('hidden');
+            comparisonTable.classList.add('hidden');
+            return;
+        }
+
+        comparisonPlaceholder.classList.add('hidden');
+        comparisonTable.classList.remove('hidden');
+
+        // Draw header columns
+        comparisonHeaderRow.innerHTML = `<th style="text-align:left; padding:0.75rem; font-weight:700; color:var(--text-primary); min-width:180px; border-right:1px solid var(--border-color);">Metric / Hyperparam</th>`;
+        selectedRuns.forEach(run => {
+            const th = document.createElement('th');
+            th.style.cssText = 'text-align:left; padding:0.75rem; font-weight:700; color:var(--text-primary); border-right:1px solid var(--border-color);';
+            th.innerHTML = `${run.name} ${run.isLive ? '<span class="status-badge training" style="font-size:0.6rem; padding:0.1rem 0.3rem; margin-left:0.25rem;">Live</span>' : ''}`;
+            comparisonHeaderRow.appendChild(th);
+        });
+
+        // Collect all distinct config keys
+        const configKeys = new Set();
+        selectedRuns.forEach(run => {
+            Object.keys(run.config).forEach(k => configKeys.add(k));
+        });
+
+        let tbodyHtml = "";
+
+        // Row 1: Best Accuracy
+        tbodyHtml += `<tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem; font-weight:600; color:var(--text-secondary); border-right:1px solid var(--border-color);">Best Accuracy reached</td>`;
+        selectedRuns.forEach(run => {
+            const val = run.bestAcc ? `${(run.bestAcc <= 1.0 ? run.bestAcc * 100 : run.bestAcc).toFixed(2)}%` : 'N/A';
+            tbodyHtml += `<td style="padding:0.75rem; font-weight:600; color:var(--success); border-right:1px solid var(--border-color);">${val}</td>`;
+        });
+        tbodyHtml += `</tr>`;
+
+        // Row 2: Minimum Loss
+        tbodyHtml += `<tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem; font-weight:600; color:var(--text-secondary); border-right:1px solid var(--border-color);">Minimum Loss reached</td>`;
+        selectedRuns.forEach(run => {
+            const val = run.minLoss !== null ? run.minLoss.toFixed(4) : 'N/A';
+            tbodyHtml += `<td style="padding:0.75rem; font-weight:600; color:var(--accent-primary); border-right:1px solid var(--border-color);">${val}</td>`;
+        });
+        tbodyHtml += `</tr>`;
+
+        // Row 3: Training Duration
+        tbodyHtml += `<tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem; font-weight:600; color:var(--text-secondary); border-right:1px solid var(--border-color);">Total training duration</td>`;
+        selectedRuns.forEach(run => {
+            const val = `${run.duration}s`;
+            tbodyHtml += `<td style="padding:0.75rem; border-right:1px solid var(--border-color);">${val}</td>`;
+        });
+        tbodyHtml += `</tr>`;
+
+        // Divider Row for Hyperparams
+        tbodyHtml += `<tr style="background:rgba(255,255,255,0.02);"><td colspan="${selectedRuns.length + 1}" style="padding:0.4rem 0.75rem; font-weight:700; color:var(--accent-secondary); font-size:0.75rem; text-transform:uppercase; border-bottom:1px solid var(--border-color);">Hyperparameters & Configuration</td></tr>`;
+
+        // Config Rows
+        if (configKeys.size === 0) {
+            tbodyHtml += `<tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem; color:var(--text-muted); border-right:1px solid var(--border-color);" colspan="${selectedRuns.length + 1}">No hyperparameter configurations logged. Use <code>modelsight.init(config={...})</code> in python.</td></tr>`;
+        } else {
+            Array.from(configKeys).sort().forEach(key => {
+                tbodyHtml += `<tr style="border-bottom:1px solid var(--border-color);"><td style="padding:0.75rem; color:var(--text-secondary); font-weight:500; border-right:1px solid var(--border-color);">${key}</td>`;
+                selectedRuns.forEach(run => {
+                    const val = run.config[key] !== undefined ? `<code>${JSON.stringify(run.config[key])}</code>` : '-';
+                    tbodyHtml += `<td style="padding:0.75rem; border-right:1px solid var(--border-color);">${val}</td>`;
+                });
+                tbodyHtml += `</tr>`;
+            });
+        }
+
+        comparisonTbody.innerHTML = tbodyHtml;
     }
 
     function exportHTMLReport() {

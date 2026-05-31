@@ -173,6 +173,14 @@ class DashboardPanel {
                 </div>
             </div>
             <div class="status-bar-container">
+                <div id="tb-badge" class="status-badge integration hidden">
+                    <span class="status-dot"></span>
+                    <span>TensorBoard Active</span>
+                </div>
+                <div id="wandb-badge" class="status-badge integration hidden">
+                    <span class="status-dot"></span>
+                    <span>W&B Active</span>
+                </div>
                 <div id="status-badge" class="status-badge idle">
                     <span class="status-dot"></span>
                     <span id="status-text">Idle</span>
@@ -194,104 +202,222 @@ class DashboardPanel {
             </div>
         </header>
 
+        <!-- Workspace Tabs -->
+        <div class="workspace-tabs">
+            <button class="w-tab-btn active" data-w-tab="telemetry">📈 Live Telemetry</button>
+            <button class="w-tab-btn" data-w-tab="dataset">📊 Dataset Profile</button>
+            <button class="w-tab-btn" data-w-tab="comparison">🔬 Run Comparison</button>
+        </div>
+
         <!-- Main Dashboard Workspace -->
         <main class="dashboard-grid">
             
-            <!-- Left Side: Metrics & Charts -->
+            <!-- Left Side: Metrics & Charts / Dataset / Comparison -->
             <section class="left-panel">
                 
-                <!-- Telemetry Cards -->
-                <div class="metrics-row">
-                    <!-- Loss Card -->
-                    <div class="card metric-card" id="card-loss">
-                        <div class="card-label">Current Loss</div>
-                        <div class="card-value" id="val-loss">-</div>
-                        <div class="card-footer" id="footer-loss">No data received</div>
-                    </div>
+                <!-- Tab 1: Live Telemetry Section -->
+                <div id="tab-content-telemetry" class="w-tab-content">
+                    <!-- Telemetry Cards -->
+                    <div class="metrics-row">
+                        <!-- Loss Card -->
+                        <div class="card metric-card" id="card-loss">
+                            <div class="card-label">Current Loss</div>
+                            <div class="card-value" id="val-loss">-</div>
+                            <div class="card-footer" id="footer-loss">No data received</div>
+                        </div>
 
-                    <!-- Accuracy Card -->
-                    <div class="card metric-card" id="card-accuracy">
-                        <div class="card-label">Accuracy</div>
-                        <div class="card-value" id="val-accuracy">-</div>
-                        <div class="card-progress">
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill" id="bar-accuracy" style="width: 0%"></div>
+                        <!-- Accuracy Card -->
+                        <div class="card metric-card" id="card-accuracy">
+                            <div class="card-label">Accuracy</div>
+                            <div class="card-value" id="val-accuracy">-</div>
+                            <div class="card-progress">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" id="bar-accuracy" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Learning Rate Card -->
+                        <div class="card metric-card" id="card-lr">
+                            <div class="card-label">Learning Rate</div>
+                            <div class="card-value" id="val-lr">-</div>
+                            <div class="card-footer" id="footer-lr">No data received</div>
+                        </div>
+
+                        <!-- Hardware (Detailed GPU) Card -->
+                        <div class="card metric-card" id="card-hardware">
+                            <div class="card-label">GPU Info</div>
+                            <div class="card-value" id="val-gpu">-</div>
+                            <div class="gpu-details-sub" style="font-size:0.75rem; color:var(--text-secondary); margin-top:0.25rem;">
+                                <span id="val-gpu-name" style="display:block; font-size:0.7rem; font-weight:600; color:var(--accent-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">No GPU detected</span>
+                                <div style="display:flex; justify-content:space-between; margin-top:0.25rem;">
+                                    <span id="val-gpu-temp">Temp: -</span>
+                                    <span id="val-gpu-power">Power: -</span>
+                                </div>
+                                <div style="margin-top:0.25rem;">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+                                        <span>VRAM</span>
+                                        <span id="val-gpu-vram">- / - MB</span>
+                                    </div>
+                                    <div class="progress-bar-bg" style="margin-top:0.15rem;">
+                                        <div class="progress-bar-fill" id="bar-gpu-vram" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RAM Usage Card -->
+                        <div class="card metric-card" id="card-ram">
+                            <div class="card-label">RAM Usage</div>
+                            <div class="card-value" id="val-ram">-</div>
+                            <div class="card-progress">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" id="bar-ram" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Overfitting Risk Card -->
+                        <div class="card metric-card" id="card-overfitting">
+                            <div class="card-label">Overfitting Risk</div>
+                            <div class="card-value" id="val-overfit">Low</div>
+                            <div class="card-progress">
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill progress-low" id="bar-overfit" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Learning Rate Card -->
-                    <div class="card metric-card" id="card-lr">
-                        <div class="card-label">Learning Rate</div>
-                        <div class="card-value" id="val-lr">-</div>
-                        <div class="card-footer" id="footer-lr">No data received</div>
+                    <!-- LLM Specific Metrics Row -->
+                    <div id="llm-metrics-row" class="metrics-row hidden" style="margin-top: 1rem; grid-template-columns: repeat(2, 1fr);">
+                        <!-- Perplexity Card -->
+                        <div class="card metric-card" id="card-perplexity">
+                            <div class="card-label">Perplexity</div>
+                            <div class="card-value" id="val-perplexity">-</div>
+                            <div class="card-footer" id="footer-perplexity">LLM generation quality</div>
+                        </div>
+                        <!-- Tokens per Second Card -->
+                        <div class="card metric-card" id="card-tps">
+                            <div class="card-label">Speed (Tokens/sec)</div>
+                            <div class="card-value" id="val-tps">-</div>
+                            <div class="card-footer" id="footer-tps">Throughput performance</div>
+                        </div>
                     </div>
 
-                    <!-- Hardware & Progress Cards -->
-                    <div class="card metric-card" id="card-hardware">
-                        <div class="card-label">GPU Usage</div>
-                        <div class="card-value" id="val-gpu">-</div>
-                        <div class="card-progress">
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill" id="bar-gpu" style="width: 0%"></div>
+                    <!-- ETA & Training Progress Banner -->
+                    <div class="card eta-card" id="eta-banner" style="margin-top: 1rem;">
+                        <div class="eta-label-group">
+                            <span class="main-label">Training Progress</span>
+                            <span id="val-eta" class="eta-value">Calculating ETA...</span>
+                        </div>
+                        <div class="eta-progress-container">
+                            <div class="progress-bar-bg large">
+                                <div class="progress-bar-fill glowing" id="bar-progress" style="width: 0%"></div>
+                            </div>
+                            <div class="progress-details">
+                                <span id="progress-text">0% Complete</span>
+                                <span id="progress-epochs">-/- Epochs</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- RAM Usage Card -->
-                    <div class="card metric-card" id="card-ram">
-                        <div class="card-label">RAM Usage</div>
-                        <div class="card-value" id="val-ram">-</div>
-                        <div class="card-progress">
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill" id="bar-ram" style="width: 0%"></div>
+                    <!-- Visualization Panel (SVG Charts) -->
+                    <div class="card charts-card" style="margin-top: 1rem;">
+                        <div class="charts-header">
+                            <h2>Training Curves</h2>
+                            <div class="chart-tabs">
+                                <button class="tab-btn active" data-chart="loss">Loss</button>
+                                <button class="tab-btn" data-chart="accuracy">Accuracy</button>
+                                <button class="tab-btn" data-chart="lr">Learning Rate</button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Overfitting Risk Card -->
-                    <div class="card metric-card" id="card-overfitting">
-                        <div class="card-label">Overfitting Risk</div>
-                        <div class="card-value" id="val-overfit">Low</div>
-                        <div class="card-progress">
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill progress-low" id="bar-overfit" style="width: 0%"></div>
+                        <div class="chart-content">
+                            <div class="svg-container" id="chart-viewport">
+                                <!-- SVG lines will be rendered dynamically by dashboard.js -->
+                                <svg id="live-chart" width="100%" height="100%"></svg>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ETA & Training Progress Banner -->
-                <div class="card eta-card" id="eta-banner">
-                    <div class="eta-label-group">
-                        <span class="main-label">Training Progress</span>
-                        <span id="val-eta" class="eta-value">Calculating ETA...</span>
-                    </div>
-                    <div class="eta-progress-container">
-                        <div class="progress-bar-bg large">
-                            <div class="progress-bar-fill glowing" id="bar-progress" style="width: 0%"></div>
+                <!-- Tab 2: Dataset Profile Section -->
+                <div id="tab-content-dataset" class="w-tab-content hidden">
+                    <div class="card" style="display:flex; flex-direction:column; gap:1.25rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:0.75rem;">
+                            <h2>Dataset Profile & Statistics</h2>
+                            <span id="dataset-name-badge" class="shield-badge" style="font-size:0.8rem; padding:0.3rem 0.6rem;">No Dataset Logged</span>
                         </div>
-                        <div class="progress-details">
-                            <span id="progress-text">0% Complete</span>
-                            <span id="progress-epochs">-/- Epochs</span>
+                        
+                        <div class="metrics-row" style="grid-template-columns: repeat(2, 1fr);">
+                            <div class="card metric-card" style="min-height:80px; background:rgba(0,0,0,0.15);">
+                                <div class="card-label">Total Samples</div>
+                                <div class="card-value" id="dataset-samples" style="font-size:1.5rem;">-</div>
+                            </div>
+                            <div class="card metric-card" style="min-height:80px; background:rgba(0,0,0,0.15);">
+                                <div class="card-label">Feature Shape</div>
+                                <div class="card-value" id="dataset-shape" style="font-size:1.5rem; color:var(--accent-secondary);">-</div>
+                            </div>
+                        </div>
+                        
+                        <div class="dataset-details-grid" style="display:grid; grid-template-columns: 1.2fr 1.8fr; gap:1.25rem;">
+                            <div>
+                                <h3 style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-bottom:0.5rem; text-transform:uppercase;">Class Labels</h3>
+                                <div style="max-height: 250px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px; background:rgba(0,0,0,0.25);">
+                                    <table style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                                        <thead>
+                                            <tr style="border-bottom:1px solid var(--border-color); background:rgba(255,255,255,0.03);">
+                                                <th style="text-align:left; padding:0.5rem; font-weight:600; color:var(--text-muted);">Class</th>
+                                                <th style="text-align:right; padding:0.5rem; font-weight:600; color:var(--text-muted);">Count</th>
+                                                <th style="text-align:right; padding:0.5rem; font-weight:600; color:var(--text-muted);">Pct</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="dataset-classes-tbody">
+                                            <tr>
+                                                <td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No dataset profile logs received. Call <code>modelsight.log_dataset(...)</code> to profile your dataset.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-bottom:0.5rem; text-transform:uppercase;">Class Distribution</h3>
+                                <div id="dataset-chart-container" style="height:250px; border:1px solid var(--border-color); border-radius:8px; background:rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; padding:1rem;">
+                                    <svg id="dataset-distribution-svg" width="100%" height="100%">
+                                        <text x="50%" y="50%" text-anchor="middle" fill="var(--text-muted)" font-size="11">No distribution data</text>
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Visualization Panel (SVG Charts) -->
-                <div class="card charts-card">
-                    <div class="charts-header">
-                        <h2>Training Curves</h2>
-                        <div class="chart-tabs">
-                            <button class="tab-btn active" data-chart="loss">Loss</button>
-                            <button class="tab-btn" data-chart="accuracy">Accuracy</button>
-                            <button class="tab-btn" data-chart="lr">Learning Rate</button>
+                <!-- Tab 3: Run Comparison Section -->
+                <div id="tab-content-comparison" class="w-tab-content hidden">
+                    <div class="card" style="display:flex; flex-direction:column; gap:1.25rem;">
+                        <div style="border-bottom:1px solid var(--border-color); padding-bottom:0.75rem;">
+                            <h2>Run History Comparison Matrix</h2>
+                            <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:0.25rem;">Select checkboxes in the "Run History" panel on the right to compare active hyperparameters and validation results side-by-side.</p>
                         </div>
-                    </div>
-                    <div class="chart-content">
-                        <div class="svg-container" id="chart-viewport">
-                            <!-- SVG lines will be rendered dynamically by dashboard.js -->
-                            <svg id="live-chart" width="100%" height="100%"></svg>
+                        
+                        <div id="comparison-matrix-container" style="overflow-x:auto;">
+                            <div id="comparison-placeholder" style="text-align:center; padding:3rem; color:var(--text-muted);">
+                                <span style="font-size:2rem; display:block; margin-bottom:0.5rem;">🔬</span>
+                                <h3>No runs selected for comparison</h3>
+                                <p style="max-width:300px; margin:0.25rem auto 0 auto; font-size:0.8rem;">Select two or more checkboxes in the Run History drawer on the right to construct a side-by-side comparison table here.</p>
+                            </div>
+                            
+                            <table id="comparison-table" class="hidden" style="width:100%; border-collapse:collapse; font-size:0.85rem; border:1px solid var(--border-color);">
+                                <thead>
+                                    <tr id="comparison-header-row" style="border-bottom:2px solid var(--border-color); background:rgba(255,255,255,0.03);">
+                                        <th style="text-align:left; padding:0.75rem; font-weight:700; color:var(--text-primary); min-width:180px; border-right:1px solid var(--border-color);">Metric / Hyperparameter</th>
+                                        <!-- Dynamic run column headers go here -->
+                                    </tr>
+                                </thead>
+                                <tbody id="comparison-tbody">
+                                    <!-- Dynamic rows go here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

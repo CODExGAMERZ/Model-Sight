@@ -2,7 +2,7 @@
   "name": "modelsight",
   "displayName": "ModelSight",
   "description": "Local-first visual training dashboard and ML error explainer for AI/ML students.",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "publisher": "CODExGAMERZ",
   "icon": "media/logo.png",
   "repository": {

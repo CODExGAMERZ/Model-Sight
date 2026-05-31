@@ -791,3 +791,95 @@ pre {
         box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
     }
 }
+
+/* Workspace Tabs Navigation */
+.workspace-tabs {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    backdrop-filter: var(--glass-blur);
+    margin-bottom: 0.5rem;
+}
+
+.w-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.w-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.w-tab-btn.active {
+    color: #fff;
+    background: var(--accent-gradient);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(129, 140, 248, 0.25);
+}
+
+/* Integration Badges styling */
+.status-badge.integration {
+    animation: pulse-opacity 2s infinite alternate;
+}
+
+.status-badge.integration.hidden {
+    display: none !important;
+}
+
+/* GPU Details section */
+.gpu-details-sub {
+    border-top: 1px solid var(--border-color);
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Table styles */
+#comparison-table th, #comparison-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+#comparison-table th:last-child, #comparison-table td:last-child {
+    border-right: none;
+}
+
+#comparison-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+#comparison-table code {
+    font-family: var(--font-mono);
+    color: var(--accent-secondary);
+    background: rgba(45, 212, 191, 0.08);
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+}
+
+#dataset-classes-tbody tr {
+    border-bottom: 1px solid var(--border-color);
+}
+
+#dataset-classes-tbody td {
+    padding: 0.5rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

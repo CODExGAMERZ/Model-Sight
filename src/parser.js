@@ -30,28 +30,37 @@ function parseLine(line) {
     }
 
     if (parsedJson && typeof parsedJson === 'object') {
-        if (parsedJson.loss !== undefined) metrics.loss = parseFloat(parsedJson.loss);
-        if (parsedJson.val_loss !== undefined) metrics.val_loss = parseFloat(parsedJson.val_loss);
+        Object.assign(metrics, parsedJson);
 
-        if (parsedJson.accuracy !== undefined) metrics.accuracy = parseFloat(parsedJson.accuracy);
-        else if (parsedJson.acc !== undefined) metrics.accuracy = parseFloat(parsedJson.acc);
+        if (parsedJson.loss !== undefined && parsedJson.loss !== null) metrics.loss = parseFloat(parsedJson.loss);
+        if (parsedJson.val_loss !== undefined && parsedJson.val_loss !== null) metrics.val_loss = parseFloat(parsedJson.val_loss);
 
-        if (parsedJson.val_accuracy !== undefined) metrics.val_accuracy = parseFloat(parsedJson.val_accuracy);
-        else if (parsedJson.val_acc !== undefined) metrics.val_accuracy = parseFloat(parsedJson.val_acc);
+        if (parsedJson.accuracy !== undefined && parsedJson.accuracy !== null) metrics.accuracy = parseFloat(parsedJson.accuracy);
+        else if (parsedJson.acc !== undefined && parsedJson.acc !== null) metrics.accuracy = parseFloat(parsedJson.acc);
 
-        if (parsedJson.lr !== undefined) metrics.lr = parseFloat(parsedJson.lr);
-        else if (parsedJson.learning_rate !== undefined) metrics.lr = parseFloat(parsedJson.learning_rate);
+        if (parsedJson.val_accuracy !== undefined && parsedJson.val_accuracy !== null) metrics.val_accuracy = parseFloat(parsedJson.val_accuracy);
+        else if (parsedJson.val_acc !== undefined && parsedJson.val_acc !== null) metrics.val_accuracy = parseFloat(parsedJson.val_acc);
 
-        if (parsedJson.gpu_usage !== undefined) {
+        if (parsedJson.lr !== undefined && parsedJson.lr !== null) metrics.lr = parseFloat(parsedJson.lr);
+        else if (parsedJson.learning_rate !== undefined && parsedJson.learning_rate !== null) metrics.lr = parseFloat(parsedJson.learning_rate);
+
+        if (parsedJson.gpu_usage !== undefined && parsedJson.gpu_usage !== null) {
             metrics.gpu_usage = parseFloat(parsedJson.gpu_usage);
-        } else if (parsedJson.gpu !== undefined) {
+        } else if (parsedJson.gpu !== undefined && parsedJson.gpu !== null) {
             metrics.gpu_usage = parseFloat(parsedJson.gpu);
         }
 
-        if (parsedJson.ram_usage !== undefined) {
+        if (parsedJson.ram_usage !== undefined && parsedJson.ram_usage !== null) {
             metrics.ram_usage = parseFloat(parsedJson.ram_usage);
-        } else if (parsedJson.ram !== undefined) {
+        } else if (parsedJson.ram !== undefined && parsedJson.ram !== null) {
             metrics.ram_usage = parseFloat(parsedJson.ram);
+        }
+
+        if (parsedJson.perplexity !== undefined && parsedJson.perplexity !== null) {
+            metrics.perplexity = parseFloat(parsedJson.perplexity);
+        }
+        if (parsedJson.tokens_per_sec !== undefined && parsedJson.tokens_per_sec !== null) {
+            metrics.tokens_per_sec = parseFloat(parsedJson.tokens_per_sec);
         }
 
         if (parsedJson.checkpoint !== undefined) {
