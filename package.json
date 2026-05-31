@@ -15,7 +15,7 @@
   "homepage": "https://github.com/CODExGAMERZ/Model-Sight#readme",
   "license": "MIT",
   "engines": {
-    "vscode": "^1.70.0"
+    "vscode": "^1.75.0"
   },
   "categories": [
     "Machine Learning",
@@ -36,12 +36,6 @@
     "error explainer"
   ],
   "main": "./src/extension.js",
-  "activationEvents": [
-    "onCommand:modelsight.openDashboard",
-    "onCommand:modelsight.runMonitor",
-    "onCommand:modelsight.stopMonitor",
-    "onCommand:modelsight.installPythonHelper"
-  ],
   "contributes": {
     "commands": [
       {
