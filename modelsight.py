@@ -201,14 +201,12 @@ def init(project=None, run_name=None, config=None, tensorboard_dir=None, use_wan
     # TensorBoard setup
     if tensorboard_dir:
         try:
-            # pyrefly: ignore [missing-import]
-            from torch.utils.tensorboard import SummaryWriter
+            from torch.utils.tensorboard import SummaryWriter  # pyrefly: ignore[missing-import]
             _tb_writer = SummaryWriter(log_dir=tensorboard_dir)
             _log_integration_status(tensorboard=True)
         except ImportError:
             try:
-                # pyrefly: ignore [missing-import]
-                from tensorboardX import SummaryWriter
+                from tensorboardX import SummaryWriter  # pyrefly: ignore[missing-import]
                 _tb_writer = SummaryWriter(log_dir=tensorboard_dir)
                 _log_integration_status(tensorboard=True)
             except ImportError:
@@ -217,8 +215,7 @@ def init(project=None, run_name=None, config=None, tensorboard_dir=None, use_wan
     # W&B setup
     if use_wandb or wandb_init_args:
         try:
-            # pyrefly: ignore [missing-import]
-            import wandb
+            import wandb  # pyrefly: ignore[missing-import]
             init_args = wandb_init_args or {}
             if project and "project" not in init_args:
                 init_args["project"] = project
@@ -646,8 +643,7 @@ except ImportError:
 
 # Hugging Face support
 try:
-    # pyrefly: ignore [missing-import]
-    from transformers import TrainerCallback
+    from transformers import TrainerCallback  # pyrefly: ignore[missing-import]
     
     class ModelSightHFCallback(TrainerCallback):
         """Hugging Face Trainer Callback to stream metrics automatically to ModelSight."""
