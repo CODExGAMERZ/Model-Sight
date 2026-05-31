@@ -590,8 +590,15 @@
             minY = 0;
             maxY = 1;
         } else if (minY === maxY) {
-            minY = minY * 0.9;
-            maxY = maxY * 1.1;
+            const val = minY;
+            if (val === 0) {
+                minY = 0;
+                maxY = 1.0;
+            } else {
+                const offset = Math.abs(val) * 0.1;
+                minY = val - offset;
+                maxY = val + offset;
+            }
         } else {
             const diff = maxY - minY;
             minY = Math.max(0, minY - diff * 0.1);

@@ -134,6 +134,29 @@ def get_ram_usage():
 
     return None
 
+def _safe_float(val):
+    if val is None:
+        return None
+    try:
+        if hasattr(val, 'item'):
+            return float(val.item())
+        if hasattr(val, 'numpy'):
+            val_np = val.numpy()
+            if hasattr(val_np, 'item'):
+                return float(val_np.item())
+            return float(val_np)
+        return float(val)
+    except Exception:
+        return None
+
+def _safe_str(val):
+    if val is None:
+        return None
+    try:
+        return str(val)
+    except Exception:
+        return None
+
 def log(epoch=None, total_epochs=None, step=None, total_steps=None, 
         loss=None, accuracy=None, val_loss=None, val_accuracy=None, 
         lr=None, gpu_usage=None, ram_usage=None, checkpoint=None):
@@ -155,86 +178,101 @@ def log(epoch=None, total_epochs=None, step=None, total_steps=None,
         ram_usage (float): RAM usage percentage. If None, will attempt auto-detection.
         checkpoint (str): If a checkpoint was saved, pass its name/path here.
     """
-    metrics = {}
-    
-    # Setup values
-    if loss is not None:
-        metrics["loss"] = float(loss)
-    if accuracy is not None:
-        metrics["accuracy"] = float(accuracy)
-    if val_loss is not None:
-        metrics["val_loss"] = float(val_loss)
-    if val_accuracy is not None:
-        metrics["val_accuracy"] = float(val_accuracy)
-    if lr is not None:
-        metrics["lr"] = float(lr)
-        
-    # Auto-detect GPU usage if requested and not provided
-    if gpu_usage is None:
-        gpu_usage = get_gpu_usage()
-        
-    if gpu_usage is not None:
-        metrics["gpu_usage"] = float(gpu_usage)
-
-    # Auto-detect RAM usage if requested and not provided
-    if ram_usage is None:
-        ram_usage = get_ram_usage()
-        
-    if ram_usage is not None:
-        metrics["ram_usage"] = float(ram_usage)
-        
-    if checkpoint is not None:
-        metrics["checkpoint"] = str(checkpoint)
-
-    # Prepare prefix text structure for human and regex parser readability
-    prefix_parts = []
-    if epoch is not None:
-        if total_epochs is not None:
-            prefix_parts.append(f"Epoch {epoch}/{total_epochs}")
-        else:
-            prefix_parts.append(f"Epoch {epoch}")
-            
-    if step is not None:
-        if total_steps is not None:
-            prefix_parts.append(f"Step {step}/{total_steps}")
-        else:
-            prefix_parts.append(f"Step {step}")
-
-    prefix = " - ".join(prefix_parts)
-    json_data = json.dumps(metrics)
-    
-    # Print combined log line and flush stdout immediately
-    if prefix:
-        print(f"{prefix} | {json_data}")
-    else:
-        print(json_data)
-        
-    sys.stdout.flush()
-
-    # Stream metrics to local HTTP telemetry receiver server (purely local to 127.0.0.1:9824)
-    # This enables out-of-the-box support for Jupyter Notebook cells and IPython environments
     try:
-        import urllib.request
-        payload = metrics.copy()
-        if epoch is not None:
-            payload["epoch"] = epoch
-            if total_epochs is not None:
-                payload["total_epochs"] = total_epochs
-        if step is not None:
-            payload["step"] = step
-            if total_steps is not None:
-                payload["total_steps"] = total_steps
+        metrics = {}
+        
+        # Setup values safely
+        v_loss = _safe_float(loss)
+        if v_loss is not None:
+            metrics["loss"] = v_loss
+            
+        v_acc = _safe_float(accuracy)
+        if v_acc is not None:
+            metrics["accuracy"] = v_acc
+            
+        v_val_loss = _safe_float(val_loss)
+        if v_val_loss is not None:
+            metrics["val_loss"] = v_val_loss
+            
+        v_val_acc = _safe_float(val_accuracy)
+        if v_val_acc is not None:
+            metrics["val_accuracy"] = v_val_acc
+            
+        v_lr = _safe_float(lr)
+        if v_lr is not None:
+            metrics["lr"] = v_lr
+            
+        # Auto-detect GPU usage if requested and not provided
+        if gpu_usage is None:
+            gpu_usage = get_gpu_usage()
+            
+        v_gpu = _safe_float(gpu_usage)
+        if v_gpu is not None:
+            metrics["gpu_usage"] = v_gpu
 
-        req_body = json.dumps(payload).encode('utf-8')
-        req = urllib.request.Request(
-            "http://127.0.0.1:9824/metrics",
-            data=req_body,
-            headers={'Content-Type': 'application/json'},
-            method='POST'
-        )
-        # 80ms tiny timeout ensures training is never delayed if server is closed
-        with urllib.request.urlopen(req, timeout=0.08) as response:
-            response.read()
+        # Auto-detect RAM usage if requested and not provided
+        if ram_usage is None:
+            ram_usage = get_ram_usage()
+            
+        v_ram = _safe_float(ram_usage)
+        if v_ram is not None:
+            metrics["ram_usage"] = v_ram
+            
+        v_chk = _safe_str(checkpoint)
+        if v_chk is not None:
+            metrics["checkpoint"] = v_chk
+
+        # Prepare prefix text structure for human and regex parser readability
+        prefix_parts = []
+        if epoch is not None:
+            if total_epochs is not None:
+                prefix_parts.append(f"Epoch {epoch}/{total_epochs}")
+            else:
+                prefix_parts.append(f"Epoch {epoch}")
+                
+        if step is not None:
+            if total_steps is not None:
+                prefix_parts.append(f"Step {step}/{total_steps}")
+            else:
+                prefix_parts.append(f"Step {step}")
+
+        prefix = " - ".join(prefix_parts)
+        json_data = json.dumps(metrics)
+        
+        # Print combined log line and flush stdout immediately
+        if prefix:
+            print(f"{prefix} | {json_data}")
+        else:
+            print(json_data)
+            
+        sys.stdout.flush()
+
+        # Stream metrics to local HTTP telemetry receiver server (purely local to 127.0.0.1:9824)
+        # This enables out-of-the-box support for Jupyter Notebook cells and IPython environments
+        try:
+            import urllib.request
+            payload = metrics.copy()
+            if epoch is not None:
+                payload["epoch"] = epoch
+                if total_epochs is not None:
+                    payload["total_epochs"] = total_epochs
+            if step is not None:
+                payload["step"] = step
+                if total_steps is not None:
+                    payload["total_steps"] = total_steps
+
+            req_body = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(
+                "http://127.0.0.1:9824/metrics",
+                data=req_body,
+                headers={'Content-Type': 'application/json'},
+                method='POST'
+            )
+            # 80ms tiny timeout ensures training is never delayed if server is closed
+            with urllib.request.urlopen(req, timeout=0.08) as response:
+                response.read()
+        except Exception:
+            pass
     except Exception:
         pass
 
@@ -252,33 +290,36 @@ try:
             self.total_epochs = total_epochs
 
         def on_epoch_end(self, epoch, logs=None):
-            logs = logs or {}
-            epoch_num = epoch + 1
-            total = self.total_epochs or (self.params.get('epochs') if self.params else None)
-            
-            # Read learning rate
-            lr = None
-            if hasattr(self.model, 'optimizer') and self.model.optimizer is not None:
-                try:
-                    if hasattr(self.model.optimizer, 'learning_rate'):
-                        # Can be a tensor or float
-                        lr_val = self.model.optimizer.learning_rate
-                        if hasattr(lr_val, 'numpy'):
-                            lr = float(lr_val.numpy())
-                        else:
-                            lr = float(lr_val)
-                except Exception:
-                    pass
+            try:
+                logs = logs or {}
+                epoch_num = epoch + 1
+                total = self.total_epochs or (self.params.get('epochs') if self.params else None)
+                
+                # Read learning rate
+                lr = None
+                if hasattr(self.model, 'optimizer') and self.model.optimizer is not None:
+                    try:
+                        if hasattr(self.model.optimizer, 'learning_rate'):
+                            # Can be a tensor or float
+                            lr_val = self.model.optimizer.learning_rate
+                            if hasattr(lr_val, 'numpy'):
+                                lr = float(lr_val.numpy())
+                            else:
+                                lr = float(lr_val)
+                    except Exception:
+                        pass
 
-            log(
-                epoch=epoch_num,
-                total_epochs=total,
-                loss=logs.get('loss'),
-                accuracy=logs.get('accuracy') or logs.get('acc'),
-                val_loss=logs.get('val_loss'),
-                val_accuracy=logs.get('val_accuracy') or logs.get('val_acc'),
-                lr=lr
-            )
+                log(
+                    epoch=epoch_num,
+                    total_epochs=total,
+                    loss=logs.get('loss'),
+                    accuracy=logs.get('accuracy') or logs.get('acc'),
+                    val_loss=logs.get('val_loss'),
+                    val_accuracy=logs.get('val_accuracy') or logs.get('val_acc'),
+                    lr=lr
+                )
+            except Exception:
+                pass
 except ImportError:
     pass
 
@@ -290,33 +331,36 @@ try:
     class ModelSightLightningCallback(pl.Callback):
         """PyTorch Lightning Callback to stream metrics automatically to ModelSight."""
         def on_train_epoch_end(self, trainer, pl_module):
-            epoch_num = trainer.current_epoch + 1
-            total = trainer.max_epochs
-            
-            # Extract logged metrics
-            logged_metrics = trainer.logged_metrics
-            loss = logged_metrics.get('train_loss') or logged_metrics.get('loss')
-            accuracy = logged_metrics.get('train_acc') or logged_metrics.get('accuracy')
-            val_loss = logged_metrics.get('val_loss')
-            val_accuracy = logged_metrics.get('val_acc') or logged_metrics.get('val_accuracy')
-            
-            # Read learning rate
-            lr = None
             try:
-                optimizers = trainer.optimizers
-                if optimizers:
-                    lr = optimizers[0].param_groups[0]['lr']
+                epoch_num = trainer.current_epoch + 1
+                total = trainer.max_epochs
+                
+                # Extract logged metrics
+                logged_metrics = trainer.logged_metrics
+                loss = logged_metrics.get('train_loss') or logged_metrics.get('loss')
+                accuracy = logged_metrics.get('train_acc') or logged_metrics.get('accuracy')
+                val_loss = logged_metrics.get('val_loss')
+                val_accuracy = logged_metrics.get('val_acc') or logged_metrics.get('val_accuracy')
+                
+                # Read learning rate
+                lr = None
+                try:
+                    optimizers = trainer.optimizers
+                    if optimizers:
+                        lr = optimizers[0].param_groups[0]['lr']
+                except Exception:
+                    pass
+
+                log(
+                    epoch=epoch_num,
+                    total_epochs=total,
+                    loss=loss,
+                    accuracy=accuracy,
+                    val_loss=val_loss,
+                    val_accuracy=val_accuracy,
+                    lr=lr
+                )
             except Exception:
                 pass
-
-            log(
-                epoch=epoch_num,
-                total_epochs=total,
-                loss=loss,
-                accuracy=accuracy,
-                val_loss=val_loss,
-                val_accuracy=val_accuracy,
-                lr=lr
-            )
 except ImportError:
     pass

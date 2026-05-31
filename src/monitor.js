@@ -79,12 +79,10 @@ class TrainingMonitor {
         }
         
         try {
-            // Quote the script path to handle folder directories containing spaces safely when shell: true is active
-            const quotedScript = `"${scriptPath}"`;
-            this.process = spawn(pythonPath, [quotedScript], {
+            this.process = spawn(pythonPath, [scriptPath], {
                 cwd: path.dirname(scriptPath),
                 env: env,
-                shell: true // standard behavior on Windows/macOS
+                shell: false
             });
         } catch (error) {
             this.isTraining = false;
@@ -223,8 +221,11 @@ class TrainingMonitor {
                 this.process.kill('SIGINT');
             }
             
-            this.isTraining = false;
             this.process = null;
+        }
+
+        if (this.isTraining) {
+            this.isTraining = false;
             if (this.onStatusCallback) this.onStatusCallback({ isTraining: false, scriptName: "" });
             vscode.window.showInformationMessage("ModelSight training monitor stopped.");
         }

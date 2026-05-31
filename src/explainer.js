@@ -44,7 +44,115 @@ function explainError(errorText) {
     }
 
     // Classify the error
-    // 1. Tensor Shape Mismatch
+    // 1. CUDA Out of Memory (OOM)
+    if (/out of memory/i.test(targetLine) || 
+        /OutOfMemoryError/i.test(targetLine) ||
+        (/allocate/i.test(targetLine) && /memory/i.test(targetLine))) {
+        return {
+            category: "CUDA Out of Memory (OOM)",
+            summary: "Your GPU has run out of VRAM (Video RAM) required to store model weights, activation outputs, gradients, or batch tensors.",
+            whyItHappened: "Deep learning models require significant GPU memory. This crash happens when the combined size of your model parameters, optimizer states, gradients, and the active batch of data exceeds the physical memory capacity of your GPU.",
+            whatToDo: [
+                "Decrease the batch size in your training DataLoader (e.g., from 64 to 32, 16, or 8).",
+                "Wrap validation or inference loops in the `with torch.no_grad():` context manager to prevent PyTorch from storing gradients.",
+                "Clear the GPU cache before/after epochs using `torch.cuda.empty_cache()`.",
+                "Use gradient accumulation to split a large batch into smaller sub-batches while maintaining the same effective batch size.",
+                "If using a very large model (like a LLM or large ResNet), consider using a smaller variant or freezing some layer parameters."
+            ],
+            originalError: targetLine
+        };
+    }
+
+    // 2. Loss Function Dimension Mismatch
+    if (/Target and input must have/i.test(targetLine) || 
+        /Expected input batch_size/i.test(targetLine) || 
+        /target.*invalid shape/i.test(targetLine) || 
+        /multi-target not supported/i.test(targetLine) || 
+        /Target size.*predict.*size/i.test(targetLine)) {
+        return {
+            category: "Loss Function Dimension Mismatch",
+            summary: "The shape of your model's predictions does not align with the shape or format of your ground-truth labels.",
+            whyItHappened: "ML loss functions expect very specific input and target shapes. For example:\n1. `nn.CrossEntropyLoss` expects predictions of shape `(N, C)` (where C is the number of classes) and targets of shape `(N)` (class indices as integers, not one-hot vectors).\n2. `nn.BCELoss` or `nn.MSELoss` expects both predictions and targets to have the exact same shape (e.g., `(N, 1)` or `(N)`).",
+            whatToDo: [
+                "Print the shape of predictions and targets right before calculating the loss: `print(predictions.shape, targets.shape)`.",
+                "Verify your loss function requirements. If using `nn.CrossEntropyLoss`, ensure targets are 1D integer tensors (e.g., `torch.long`) containing class indices, not floats or one-hot vectors.",
+                "If your targets have an extra dimension (like `(N, 1)` instead of `(N)`), use `targets.squeeze(-1)` or `targets.squeeze()` to remove it.",
+                "If using binary classification, ensure targets are cast to float: `targets = targets.float()`."
+            ],
+            originalError: targetLine
+        };
+    }
+
+    // 3. Missing Dependency / Library
+    if (targetLine.startsWith("ModuleNotFoundError:") || targetLine.startsWith("ImportError:")) {
+        return {
+            category: "Missing Dependency / Library",
+            summary: "The Python environment running your script is missing a required library or package.",
+            whyItHappened: "This happens when you import a library (like `torch`, `numpy`, `pandas`, `sklearn`, or `matplotlib`) that is not installed in the currently active Python interpreter or virtual environment.",
+            whatToDo: [
+                "Install the missing package in your terminal: run `pip install <package_name>` or `conda install <package_name>`.",
+                "Verify that VS Code is using the correct Python interpreter. Click on the Python version in the bottom-right status bar or run `Python: Select Interpreter` from the Command Palette (`Ctrl+Shift+P`), then select the virtual environment (`venv` or `conda`) where your libraries are installed."
+            ],
+            originalError: targetLine
+        };
+    }
+
+    // 4. Python Syntax or Reference Error
+    if (targetLine.startsWith("NameError:") || 
+        targetLine.startsWith("SyntaxError:") || 
+        targetLine.startsWith("IndentationError:")) {
+        return {
+            category: "Python Syntax or Reference Error",
+            summary: "Your code has a syntax mistake, typo, or refers to a variable/function that has not been defined.",
+            whyItHappened: "Standard programming error. Usually a typo in a variable or function name, a missing import statement, or an indentation misalignment.",
+            whatToDo: [
+                "Check the traceback to find the exact line and file where the error occurred.",
+                "Verify that you have spelled all variables, functions, and modules correctly.",
+                "Ensure that you have imported the module containing the missing name (e.g., did you forget `import torch` or `import numpy as np`?).",
+                "For IndentationError, check that you are consistently using either spaces or tabs (never mix them) for code blocks."
+            ],
+            originalError: targetLine
+        };
+    }
+
+    // 5. Numerical Instability / Exploding Gradients
+    if (/NaN/i.test(targetLine) || 
+        /Infinity/i.test(targetLine) || 
+        /ZeroDivisionError/i.test(targetLine) || 
+        /division by zero/i.test(targetLine)) {
+        return {
+            category: "Numerical Instability / Exploding Gradients",
+            summary: "Your model weights, loss, or gradients have become NaN (Not a Number) or infinite, causing training to fail.",
+            whyItHappened: "This is usually caused by:\n1. A division by zero or log of zero in custom loss functions.\n2. Exploding gradients, where the learning rate is too high and weights grow exponentially until they overflow.\n3. Logarithms or square roots of negative numbers.",
+            whatToDo: [
+                "Lower your learning rate (e.g., try `1e-4` or `1e-5` instead of `1e-2`).",
+                "Add a small epsilon value (e.g., `1e-7`) to denominators or log inputs: `torch.log(x + 1e-7)` to prevent division/log of zero.",
+                "Apply gradient clipping in your training loop: e.g. `torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)`.",
+                "Use weight initialization (like Xavier or He initialization) and layer normalization to stabilize training activations."
+            ],
+            originalError: targetLine
+        };
+    }
+
+    // 6. CUDA Driver / Hardware Initialization Error
+    if (/CUDA driver version is insufficient/i.test(targetLine) || 
+        /NVIDIA-SMI has failed/i.test(targetLine) || 
+        /no CUDA-capable device/i.test(targetLine) || 
+        /CUDA is not available/i.test(targetLine)) {
+        return {
+            category: "CUDA Driver / Hardware Initialization Error",
+            summary: "PyTorch or TensorFlow cannot communicate with your NVIDIA GPU or CUDA runtime.",
+            whyItHappened: "This happens if you attempt to use GPU acceleration (`device='cuda'`) but the proper NVIDIA GPU drivers are not installed, the CUDA toolkit is mismatched, or the PyTorch version installed was compiled for CPU-only.",
+            whatToDo: [
+                "Verify your GPU drivers are up-to-date by running `nvidia-smi` in the terminal.",
+                "Check if CUDA is available in Python: run `python -c \"import torch; print(torch.cuda.is_available())\"`.",
+                "If it returns `False`, you may need to reinstall PyTorch with the correct CUDA version. Visit the official PyTorch website and run the recommended pip/conda install command."
+            ],
+            originalError: targetLine
+        };
+    }
+
+    // 7. Tensor Shape Mismatch
     if (/mat1 and mat2 shapes cannot be multiplied/i.test(targetLine) || 
         /shapes.*not.*compatible/i.test(targetLine) ||
         /size mismatch/i.test(targetLine) ||
@@ -67,7 +175,7 @@ function explainError(errorText) {
         };
     }
 
-    // 2. Device Mismatch (CPU vs GPU/CUDA)
+    // 8. Device Mismatch (CPU vs GPU/CUDA)
     if (/expected.*same device/i.test(targetLine) || 
         /but found.*devices/i.test(targetLine) ||
         /CUDA error: device-side assert triggered/i.test(targetLine) ||
@@ -88,7 +196,7 @@ function explainError(errorText) {
         };
     }
 
-    // 3. Index Out of Range
+    // 9. Index Out of Range
     if (/index out of/i.test(targetLine) || 
         /target.*out of bounds/i.test(targetLine) ||
         /dimension.*out of range/i.test(targetLine) ||
@@ -107,7 +215,7 @@ function explainError(errorText) {
         };
     }
 
-    // 4. Data Type Mismatch
+    // 10. Data Type Mismatch
     if (/expected.*type/i.test(targetLine) || 
         /but got/i.test(targetLine) ||
         /invalid type/i.test(targetLine) ||
@@ -127,7 +235,7 @@ function explainError(errorText) {
         };
     }
 
-    // 5. Missing Key or Column (Pandas / Dicts)
+    // 11. Missing Key or Column (Pandas / Dicts)
     if (targetLine.startsWith("KeyError:") || 
         /is not in list/i.test(targetLine) ||
         /column.*not found/i.test(targetLine) ||
@@ -145,7 +253,7 @@ function explainError(errorText) {
         };
     }
 
-    // 6. Attribute Error (Missing Method / Property)
+    // 12. Attribute Error (Missing Method / Property)
     if (targetLine.startsWith("AttributeError:") || 
         /has no attribute/i.test(targetLine) ||
         /'NoneType' object has no attribute/i.test(targetLine)) {
@@ -162,7 +270,7 @@ function explainError(errorText) {
         };
     }
 
-    // 7. Path Issues / Missing File
+    // 13. Path Issues / Missing File
     if (targetLine.startsWith("FileNotFoundError:") || 
         /no such file/i.test(targetLine) ||
         /cannot find the path/i.test(targetLine) ||
@@ -180,7 +288,7 @@ function explainError(errorText) {
         };
     }
 
-    // 8. Default Fallback
+    // 14. Default Fallback
     return {
         category: "Python Execution Error",
         summary: "The training script crashed due to a Python exception.",
