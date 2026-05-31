@@ -119,6 +119,22 @@ trainer = pl.Trainer(
 )
 ```
 
+#### 4. Hugging Face / Transformers Integration
+Stream LLM and standard Transformer metrics automatically using the Hugging Face Trainer callback:
+```python
+from transformers import Trainer
+from modelsight import ModelSightHFCallback
+
+# Pass the callback to the Trainer
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=train_dataset,
+    eval_dataset=val_dataset,
+    callbacks=[ModelSightHFCallback()]
+)
+```
+
 ### Step 3: Run the Monitored Script
 1. Open your training script (e.g. `train.py`) in VS Code.
 2. Click the **ModelSight Play Icon** at the top right of the editor, or right-click inside the file editor and choose **`ModelSight: Run Python Script with Monitor`**.
@@ -148,6 +164,37 @@ modelsight.log(
 
 ## 📋 API Reference
 
+### `modelsight.init(...)`
+
+Initialize ModelSight settings, configuration hyperparameters, and optional third-party integrations (TensorBoard and Weights & Biases).
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| `project` | `str` | Name of the active machine learning project. |
+| `run_name` | `str` | Name of the active run. If omitted, generates a unique default name. |
+| `config` | `dict` | Dictionary of hyperparameters to log and compare. |
+| `tensorboard_dir` | `str` | Directory path to run TensorBoard SummaryWriter. If provided, duplicate-writes metrics to TensorBoard. |
+| `use_wandb` | `bool` | Set to `True` to initialize Weights & Biases logging integration. |
+| `wandb_init_args`| `dict` | Custom arguments dictionary forwarded directly to `wandb.init(...)`. |
+
+---
+
+### `modelsight.log_dataset(...)`
+
+Profile and log dataset attributes to the ModelSight dashboard (which renders features shape, sample counts, and an SVG-based class distribution chart).
+
+| Parameter | Type | Description |
+| :--- | :--- | :--- |
+| `name` | `str` | Display name of the dataset. Defaults to `"Dataset"`. |
+| `data` | `any` | Dataset object (supports NumPy arrays, PyTorch datasets/loaders, Pandas DataFrames, or manual data). Used to auto-detect sample counts and feature shapes. |
+| `targets` | `any` | Labels/targets list, array, or tensor. If provided, automatically profiles class distribution. |
+| `classes` | `list` | Explicit list of unique class labels. |
+| `class_counts` | `list` | Explicit list of sample counts per class label. |
+| `feature_shape` | `list` | Explicit dimensions list of a single feature sample. |
+| `num_samples` | `int` | Explicit total count of samples in the dataset. |
+
+---
+
 ### `modelsight.log(...)`
 
 Prints structured metrics and posts them to the local Webview receiver. All arguments are optional.
@@ -166,6 +213,8 @@ Prints structured metrics and posts them to the local Webview receiver. All argu
 | `gpu_usage` | `float` | Manual GPU utilization %. If omitted, ModelSight auto-queries nvidia-smi. |
 | `ram_usage` | `float` | Manual RAM usage %. If omitted, ModelSight auto-detects system memory load. |
 | `checkpoint` | `str` | Name or path of a saved checkpoint to show a saving indicator on the timeline. |
+| `perplexity` | `float` | Custom perplexity metric. If omitted and loss is provided, auto-calculated as exp(loss). |
+| `tokens_per_sec` | `float` | Training speed in tokens per second (useful for LLMs). |
 
 ---
 
