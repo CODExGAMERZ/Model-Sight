@@ -24,6 +24,15 @@ ModelSight is a lightweight, local-first Visual Studio Code extension that turns
 
 ---
 
+## 🌐 Live Web Demo
+
+ModelSight is also available as a live web application deployed on Vercel:
+👉 **[Launch ModelSight Web App](https://modelsight.vercel.app/)**
+
+You can interact with the mock training dashboard, tweak parameters in real-time, trigger early validation warnings, and paste raw PyTorch crash logs into the traceback explainer.
+
+---
+
 ## ✨ Features
 
 ### 📈 Real-Time Telemetry Dashboard
