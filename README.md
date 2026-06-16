@@ -251,6 +251,24 @@ To build and package the extension locally:
 
 ---
 
+## 🌐 Standalone Web Simulator
+
+ModelSight includes a standalone vanilla HTML5/CSS3 web landing page and interactive simulator that replicates the real-time telemetry monitoring and traceback explanations directly in any web browser.
+
+### Preview Locally
+To run the web preview locally:
+1. Navigate to the extension directory.
+2. Serve the static `website` folder using any local server:
+   ```bash
+   npx serve website -l 5001
+   ```
+3. Open your browser to `http://localhost:5001` to test the simulation offline in your browser.
+
+### Vercel Deployment
+The repository includes a `vercel.json` config. You can import the repository directly into Vercel and it will host the static dashboard directory zero-config.
+
+---
+
 ## 📄 License
 
 This extension is licensed under the [MIT License](LICENSE). Developed and maintained by the **CODExGAMERZ** team.
