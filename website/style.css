@@ -458,6 +458,229 @@ body {
   position: relative;
 }
 
+/* Split Pane Workspace Layout */
+.split-workspace {
+  display: flex;
+  flex: 1;
+  height: calc(100% - 110px); /* Leave room for bottom terminal console */
+  overflow: hidden;
+  position: relative;
+}
+
+/* VS Code Sidebar Explorer */
+.vscode-sidebar {
+  width: 190px;
+  background: #08090c;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 10px 14px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-section {
+  padding: 8px 0;
+}
+
+.section-title {
+  padding: 4px 14px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.file-tree {
+  list-style: none;
+  margin-top: 4px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.file-item:hover {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-primary);
+}
+
+.file-item.active {
+  background: rgba(129, 140, 248, 0.08);
+  color: var(--accent-primary);
+  border-left: 2px solid var(--accent-primary);
+  padding-left: 16px;
+  font-weight: 600;
+}
+
+.file-icon-python {
+  color: #38bdf8 !important;
+}
+
+.file-icon-config {
+  color: var(--text-muted) !important;
+}
+
+/* Center-Left: Monaco Code Editor Pane */
+.editor-pane {
+  flex: 4;
+  display: flex;
+  flex-direction: column;
+  background: #090a0f;
+  border-right: 1px solid var(--border-color);
+  min-width: 150px;
+  overflow: hidden;
+}
+
+.pane-header {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  background: #06070a;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.editor-size {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.editor-container {
+  flex: 1;
+  display: flex;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.line-numbers {
+  padding: 12px 6px;
+  border-right: 1px solid rgba(255, 255, 255, 0.03);
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+  min-width: 32px;
+  font-size: 0.7rem;
+  background: rgba(0,0,0,0.1);
+}
+
+.line-numbers div {
+  height: 18.75px;
+}
+
+.code-pre {
+  flex: 1;
+  padding: 12px 14px;
+  margin: 0;
+  color: #c084fc; /* Python code styling */
+  overflow: auto;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* Resizable Pane Divider */
+.pane-divider {
+  width: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: col-resize;
+  z-index: 10;
+  transition: background 0.15s;
+}
+
+.pane-divider:hover {
+  background: var(--accent-primary);
+}
+
+/* Right Area: Visualizer Pane */
+.visualizer-pane {
+  flex: 6;
+  display: flex;
+  flex-direction: column;
+  background: #0a0b10;
+  min-width: 250px;
+  overflow: hidden;
+}
+
+/* Tuning Parameters Card Formatting */
+.params-card {
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.params-card h3 {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.params-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.param-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.param-input-group label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.param-input-group select {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.param-input-group select:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.param-input-group select:focus {
+  border-color: var(--accent-primary);
+}
+
+/* Adjustments for existing panels */
+
 /* Control Header Bar */
 .dashboard-header-bar {
   display: flex;

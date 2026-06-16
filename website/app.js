@@ -9,11 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const targetTab = btn.getAttribute('data-tab');
       
-      // Update tab buttons active state
       tabButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       
-      // Update tab panes active state
       tabPanes.forEach(pane => {
         if (pane.id === `tab-${targetTab}`) {
           pane.classList.add('active');
@@ -83,16 +81,208 @@ document.addEventListener('DOMContentLoaded', () => {
   const compAcc = document.getElementById('comp-acc');
   const compRisk = document.getElementById('comp-risk');
 
+  // Interactive Hyperparameter Inputs
+  const paramLr = document.getElementById('param-lr');
+  const paramOpt = document.getElementById('param-opt');
+  const paramBatch = document.getElementById('param-batch');
+  const paramDropout = document.getElementById('param-dropout');
+
+  // Split Workspace DOM
+  const fileTree = document.getElementById('file-tree');
+  const editorTabTitle = document.getElementById('editor-tab-title');
+  const editorFileSize = document.getElementById('editor-file-size');
+  const editorLineNumbers = document.getElementById('editor-line-numbers');
+  const editorCodePre = document.getElementById('editor-code-pre');
+  const paneDivider = document.getElementById('sight-pane-divider');
+  const editorPane = document.querySelector('.editor-pane');
+  const visualizerPane = document.querySelector('.visualizer-pane');
+  const splitWorkspace = document.querySelector('.split-workspace');
+
   // State Variables
   let simInterval = null;
   let currentEpoch = 0;
   const maxEpochs = 30;
   let historyData = [];
+  let currentFileName = 'train_resnet.py';
   
   // Data vectors for SVG drawing
   let lossHistory = [];
   let valLossHistory = [];
   let accuracyHistory = [];
+
+  // PyTorch Source Codes Database
+  const SCRIPTS = {
+    'train_resnet.py': {
+      size: 2450,
+      content: `import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import models
+from torch.utils.data import DataLoader
+
+# Setup GPU acceleration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+# Load Pretrained ResNet50
+model = models.resnet50(pretrained=True)
+model.fc = nn.Linear(model.fc.in_features, 10) # 10 Target Classes
+model = model.to(device)
+
+# Loss and Optimizer configurations
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-4)
+scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30)
+
+# Main training epoch loop
+for epoch in range(30):
+    model.train()
+    running_loss = 0.0
+    for inputs, targets in train_loader:
+        inputs, targets = inputs.to(device), targets.to(device)
+        
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, targets)
+        loss.backward()
+        optimizer.step()
+        running_loss += loss.item()
+        
+    scheduler.step()
+    print(f"Epoch {epoch+1} finished.")`
+    },
+    'train_mnist.py': {
+      size: 1845,
+      content: `import torch
+import torch.nn as nn
+import torch.optim as optim
+
+class SimpleCNN(nn.Module):
+    def __init__(self):
+        super(SimpleCNN, self).__init__()
+        self.conv = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc = nn.Linear(16 * 14 * 14, 10)
+
+    def forward(self, x):
+        x = self.pool(torch.relu(self.conv(x)))
+        x = torch.flatten(x, 1)
+        return self.fc(x)
+
+# Instantiate models
+model = SimpleCNN().to("cuda")
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+print("Starting MNIST train run...")
+for epoch in range(10):
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to("cuda"), target.to("cuda")
+        optimizer.zero_grad()
+        output = model(data)
+        loss = criterion(output, target)
+        loss.backward()
+        optimizer.step()`
+    },
+    'config.yaml': {
+      size: 420,
+      content: `# ModelSight Training Settings
+training:
+  epochs: 30
+  batch_size: 32
+  learning_rate: 0.001
+  optimizer: "AdamW"
+  dropout: 0.3
+  weight_decay: 0.0001
+
+dataset:
+  name: "imagenet_mini"
+  split: "train"
+  num_classes: 10
+
+hardware:
+  device: "cuda:0"
+  mixed_precision: true
+  num_workers: 4`
+    }
+  };
+
+  // Resizable Divider dragging logic
+  let isResizing = false;
+  paneDivider.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    const rect = splitWorkspace.getBoundingClientRect();
+    const offsetLeft = e.clientX - rect.left;
+    const widthPercentage = (offsetLeft / rect.width) * 100;
+    
+    if (widthPercentage > 15 && widthPercentage < 80) {
+      editorPane.style.flex = widthPercentage / 10;
+      visualizerPane.style.flex = (100 - widthPercentage) / 10;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      document.body.style.cursor = '';
+      if (lossHistory.length >= 2) {
+        updateSVGChart();
+      }
+    }
+  });
+
+  // Selector for script tree items
+  fileTree.querySelectorAll('.file-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const fileName = item.getAttribute('data-file');
+      if (SCRIPTS[fileName]) {
+        fileTree.querySelectorAll('.file-item').forEach(li => li.classList.remove('active'));
+        item.classList.add('active');
+        selectScript(fileName);
+      }
+    });
+  });
+
+  function selectScript(name) {
+    currentFileName = name;
+    resetSimulation();
+
+    // Update editor views
+    editorTabTitle.innerHTML = `<i class="fa-solid fa-file-code text-muted"></i> ${name}`;
+    activeScript.textContent = name;
+    
+    const kb = (SCRIPTS[name].size / 1024).toFixed(2);
+    editorFileSize.textContent = `~${kb} KB`;
+    editorCodePre.textContent = SCRIPTS[name].content;
+
+    // Update lines numbers
+    const lines = SCRIPTS[name].content.split('\n');
+    let numbersHtml = '';
+    for (let i = 1; i <= lines.length; i++) {
+      numbersHtml += `<div>${i}</div>`;
+    }
+    editorLineNumbers.innerHTML = numbersHtml;
+
+    // Connect config yaml changes to parameters widget
+    if (name === 'config.yaml') {
+      printConsole('Welcome to ModelSight. Inspecting active training parameters configuration.');
+    }
+  }
+
+  // print logs to bottom panel
+  function printConsole(line) {
+    if (consoleLog.innerHTML.startsWith("Welcome")) {
+      consoleLog.innerHTML = "";
+    }
+    consoleLog.innerHTML += line + "\n";
+    consoleLog.scrollTop = consoleLog.scrollHeight;
+  }
 
   // Reset simulator view to initial state
   function resetSimulation() {
@@ -108,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
     stopBtn.classList.add('hidden');
     statusPulse.className = 'dot-active';
     statusText.textContent = 'Status: Idle';
-    activeScript.textContent = 'None';
     tbBadge.classList.add('hidden');
     wandbBadge.classList.add('hidden');
 
@@ -144,27 +333,40 @@ document.addEventListener('DOMContentLoaded', () => {
     liveChart.innerHTML = '';
 
     const width = liveChart.clientWidth || 400;
-    const height = 220;
+    const height = 200;
     const padding = 30;
     
     // Find min/max for scale
-    const maxVal = 2.5; // fixed scale for loss or auto-scaled
+    const hasNaN = lossHistory.some(isNaN);
+    const maxVal = hasNaN ? 10.0 : Math.max(2.5, ...lossHistory.filter(x => !isNaN(x)), ...valLossHistory.filter(x => !isNaN(x)));
     const minVal = 0.0;
 
     // Helper coordinates mapper
     const getX = (index) => padding + (index / (maxEpochs - 1)) * (width - 2 * padding);
-    const getY = (value) => height - padding - ((value - minVal) / (maxVal - minVal)) * (height - 2 * padding);
+    const getY = (value) => {
+      if (isNaN(value) || value === null) return padding;
+      const val = Math.max(minVal, Math.min(maxVal, value));
+      return height - padding - ((val - minVal) / (maxVal - minVal)) * (height - 2 * padding);
+    };
 
     // Create training loss path
-    let trainPathStr = `M ${getX(0)} ${getY(lossHistory[0])}`;
-    for (let i = 1; i < lossHistory.length; i++) {
-      trainPathStr += ` L ${getX(i)} ${getY(lossHistory[i])}`;
+    let trainPathStr = "";
+    let validLossPoints = 0;
+    for (let i = 0; i < lossHistory.length; i++) {
+      if (!isNaN(lossHistory[i])) {
+        trainPathStr += (validLossPoints === 0 ? "M " : " L ") + `${getX(i)} ${getY(lossHistory[i])}`;
+        validLossPoints++;
+      }
     }
 
     // Create validation loss path
-    let valPathStr = `M ${getX(0)} ${getY(valLossHistory[0])}`;
-    for (let i = 1; i < valLossHistory.length; i++) {
-      valPathStr += ` L ${getX(i)} ${getY(valLossHistory[i])}`;
+    let valPathStr = "";
+    let validValPoints = 0;
+    for (let i = 0; i < valLossHistory.length; i++) {
+      if (!isNaN(valLossHistory[i])) {
+        valPathStr += (validValPoints === 0 ? "M " : " L ") + `${getX(i)} ${getY(valLossHistory[i])}`;
+        validValPoints++;
+      }
     }
 
     // Draw grid lines
@@ -194,21 +396,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Draw Train Path (Indigo/Coral glow)
-    const trainPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    trainPath.setAttribute("d", trainPathStr);
-    trainPath.setAttribute("fill", "none");
-    trainPath.setAttribute("stroke", "var(--accent-primary)");
-    trainPath.setAttribute("stroke-width", "2.5");
-    liveChart.appendChild(trainPath);
+    if (trainPathStr) {
+      const trainPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      trainPath.setAttribute("d", trainPathStr);
+      trainPath.setAttribute("fill", "none");
+      trainPath.setAttribute("stroke", "var(--accent-primary)");
+      trainPath.setAttribute("stroke-width", "2.5");
+      liveChart.appendChild(trainPath);
+    }
 
     // Draw Val Path (Coral/Rose glow)
-    const valPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    valPath.setAttribute("d", valPathStr);
-    valPath.setAttribute("fill", "none");
-    valPath.setAttribute("stroke", "var(--accent-secondary)");
-    valPath.setAttribute("stroke-dasharray", "4,4");
-    valPath.setAttribute("stroke-width", "2");
-    liveChart.appendChild(valPath);
+    if (valPathStr) {
+      const valPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      valPath.setAttribute("d", valPathStr);
+      valPath.setAttribute("fill", "none");
+      valPath.setAttribute("stroke", "var(--accent-secondary)");
+      valPath.setAttribute("stroke-dasharray", "4,4");
+      valPath.setAttribute("stroke-width", "2");
+      liveChart.appendChild(valPath);
+    }
 
     // Legend dots/names inside SVG
     const legendTrain = document.createElementNS("http://www.w3.org/2000/svg", "circle");
@@ -263,28 +469,63 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Mathematical approximations for loss/accuracy curve
-    const lr = 0.001 * Math.pow(0.92, currentEpoch - 1);
-    
-    // Train Loss decays from 2.3 down to 0.12
-    const trainLoss = 0.1 + 2.2 * Math.exp(-0.15 * currentEpoch) + (Math.random() * 0.03 - 0.015);
-    // Val Loss decays to 0.15, but has a slight divergence after epoch 20 (mocking slight overfitting)
-    let valLossVal = 0.14 + 2.15 * Math.exp(-0.14 * currentEpoch);
-    if (currentEpoch > 20) {
-      valLossVal += 0.008 * (currentEpoch - 20) + (Math.random() * 0.02 - 0.01);
+    // Read interactive hyperparameters values
+    const lrSetting = paramLr.value;
+    const optSetting = paramOpt.value;
+    const batchSetting = Number(paramBatch.value);
+    const dropSetting = Number(paramDropout.value);
+
+    let lr = Number(lrSetting === '5e-2' ? 0.05 : (lrSetting === '5e-4' ? 0.0005 : (lrSetting === '1e-4' ? 0.0001 : 0.001)));
+    // learning rate scheduler step decay simulation
+    lr = lr * Math.pow(0.93, currentEpoch - 1);
+
+    let trainLoss = 0;
+    let valLossVal = 0;
+    let acc = 0;
+
+    // Check high learning rate instabilty
+    if (lrSetting === '5e-2') {
+      if (currentEpoch > 5) {
+        trainLoss = NaN;
+        valLossVal = NaN;
+        acc = 10.0;
+        
+        if (currentEpoch === 6) {
+          addTimelineEvent("Alert: Exploding gradients detected (NaN loss). Numerical collapse.");
+          printConsole(`[Epoch ${currentEpoch}/30] ERROR: NaN values detected in loss calculation. Divergence triggered.`);
+        }
+      } else {
+        trainLoss = 2.3 + (currentEpoch * 1.5) + (Math.random() * 0.5);
+        valLossVal = 2.4 + (currentEpoch * 1.6);
+        acc = 10.0 + (Math.random() * 2.0);
+      }
+    } else if (optSetting === 'SGD') {
+      // SGD runs slow, decays linear-exponentially but very flat
+      trainLoss = 2.3 - (2.3 - 1.2) * (1 - Math.exp(-0.02 * currentEpoch)) + (Math.random() * 0.04 - 0.02);
+      valLossVal = trainLoss + 0.1 + (Math.random() * 0.03);
+      acc = 10 + 35 * (1 - Math.exp(-0.03 * currentEpoch)) + (Math.random() * 1.0);
     } else {
-      valLossVal += (Math.random() * 0.02 - 0.01);
+      // AdamW or Adam - Good profile
+      trainLoss = 0.08 + 2.2 * Math.exp(-0.16 * currentEpoch) + (Math.random() * 0.02 - 0.01);
+      
+      // Divergence overfitting calculation based on dropout rate
+      let overfitBoost = 0;
+      if (currentEpoch > 18) {
+        // lower dropout = higher overfitting rise
+        const severity = dropSetting === 0.1 ? 0.018 : (dropSetting === 0.3 ? 0.008 : 0.002);
+        overfitBoost = severity * (currentEpoch - 18);
+      }
+      
+      valLossVal = 0.11 + 2.15 * Math.exp(-0.15 * currentEpoch) + overfitBoost + (Math.random() * 0.02 - 0.01);
+      acc = 96.5 - 86.5 * Math.exp(-0.17 * currentEpoch) + (Math.random() * 0.3 - 0.15);
     }
 
-    // Accuracy starts at 10%, grows to ~95%
-    const acc = 95 - 85 * Math.exp(-0.16 * currentEpoch) + (Math.random() * 0.4 - 0.2);
-
-    // Update history arrays
+    // Update history vectors
     lossHistory.push(trainLoss);
     valLossHistory.push(valLossVal);
     accuracyHistory.push(acc);
 
-    // Update charts
+    // Update curves chart
     updateSVGChart();
 
     // Hardware status simulations
@@ -298,22 +539,28 @@ document.addEventListener('DOMContentLoaded', () => {
     let overfitText = 'Low';
     let overfitClass = 'progress-bar-fill success';
 
-    if (currentEpoch > 20) {
-      overfitPercent = Math.floor((currentEpoch - 20) * 8);
-      overfitText = 'Moderate';
-      overfitClass = 'progress-bar-fill warning';
-      if (overfitPercent > 50) {
+    if (lrSetting === '5e-2') {
+      overfitPercent = 100;
+      overfitText = 'Critical (NaN)';
+      overfitClass = 'progress-bar-fill danger';
+    } else if (currentEpoch > 18 && optSetting !== 'SGD') {
+      const multiplier = dropSetting === 0.1 ? 8.5 : (dropSetting === 0.3 ? 4.5 : 1.5);
+      overfitPercent = Math.floor((currentEpoch - 18) * multiplier);
+      if (overfitPercent > 55) {
         overfitText = 'High';
         overfitClass = 'progress-bar-fill danger';
+      } else if (overfitPercent > 20) {
+        overfitText = 'Moderate';
+        overfitClass = 'progress-bar-fill warning';
       }
     }
 
     // Update metrics UI
-    valLoss.textContent = trainLoss.toFixed(4);
-    footerLoss.textContent = `Val Loss: ${valLossVal.toFixed(4)}`;
+    valLoss.textContent = isNaN(trainLoss) ? 'NaN' : trainLoss.toFixed(4);
+    footerLoss.textContent = isNaN(valLossVal) ? 'Val Loss: NaN' : `Val Loss: ${valLossVal.toFixed(4)}`;
     
-    valAccuracy.textContent = `${acc.toFixed(1)}%`;
-    barAccuracy.style.width = `${acc}%`;
+    valAccuracy.textContent = isNaN(acc) ? '10.0%' : `${acc.toFixed(1)}%`;
+    barAccuracy.style.width = isNaN(acc) ? '10%' : `${acc}%`;
 
     valLr.textContent = lr.toExponential(3);
 
@@ -337,35 +584,35 @@ document.addEventListener('DOMContentLoaded', () => {
     valEta.textContent = etaSecs > 0 ? `ETA: ${etaSecs.toFixed(1)}s` : 'Completed';
 
     // Update status text
-    statusText.textContent = `Status: Training (Epoch ${currentEpoch}/${maxEpochs})`;
+    statusText.textContent = isNaN(trainLoss) ? 'Status: Unstable (NaN)' : `Status: Training (Epoch ${currentEpoch}/${maxEpochs})`;
 
-    // Append raw logs to terminal
-    if (consoleLog.innerHTML.startsWith("Welcome")) {
-      consoleLog.innerHTML = "";
-    }
-    const logLine = `[Epoch ${currentEpoch}/${maxEpochs}] loss: ${trainLoss.toFixed(4)} - val_loss: ${valLossVal.toFixed(4)} - accuracy: ${(acc/100).toFixed(4)} - lr: ${lr.toExponential(4)} - gpu_temp: ${tempVal}°C\n`;
-    consoleLog.innerHTML += logLine;
-    consoleLog.scrollTop = consoleLog.scrollHeight;
+    // Append logs to terminal
+    const lossStr = isNaN(trainLoss) ? 'NaN' : trainLoss.toFixed(4);
+    const valLossStr = isNaN(valLossVal) ? 'NaN' : valLossVal.toFixed(4);
+    const accStr = isNaN(acc) ? '0.1000' : (acc/100).toFixed(4);
+    
+    const logLine = `[Epoch ${currentEpoch}/${maxEpochs}] loss: ${lossStr} - val_loss: ${valLossStr} - accuracy: ${accStr} - lr: ${lr.toExponential(4)} - gpu_temp: ${tempVal}°C`;
+    printConsole(logLine);
 
     // Timeline trigger events
     if (currentEpoch === 1) {
-      addTimelineEvent("Initialized AdamW optimizer and loaded model layers on CUDA:0");
+      addTimelineEvent(`Initialized ${optSetting} optimizer (LR=${lrSetting}, Batch=${batchSetting}) on CUDA:0`);
     }
     if (currentEpoch === 5) {
-      addTimelineEvent("Initial weights stabilized. Learning rate scheduler started decaying steps.");
+      addTimelineEvent("Weights stabilized. Learning rate scheduler CosineAnnealing active.");
     }
-    if (currentEpoch === 15) {
-      addTimelineEvent("Model checkpoint saved. Accuracy passed 90% boundary.");
+    if (currentEpoch === 15 && lrSetting !== '5e-2') {
+      addTimelineEvent("Checkpoint saved: checkpoint_epoch_15.pt");
     }
-    if (currentEpoch === 22) {
-      addTimelineEvent("Alert: Validation gradient divergence detected. Overfitting risk raised to Moderate.");
+    if (currentEpoch === 20 && overfitText !== 'Low') {
+      addTimelineEvent(`Warning: Validation loss rising. Overfitting risk raised to ${overfitText}.`);
     }
 
     // Keep comparison matrix updated with live metrics
     compEpoch.textContent = `${currentEpoch}/${maxEpochs}`;
     compLr.textContent = lr.toExponential(3);
-    compLoss.textContent = trainLoss.toFixed(3);
-    compAcc.textContent = `${acc.toFixed(1)}%`;
+    compLoss.textContent = lossStr;
+    compAcc.textContent = isNaN(acc) ? '10.0%' : `${acc.toFixed(1)}%`;
     compRisk.textContent = overfitText;
   }
 
@@ -377,12 +624,14 @@ document.addEventListener('DOMContentLoaded', () => {
     stopBtn.classList.remove('hidden');
     statusPulse.className = 'dot-active pulsing';
     statusText.textContent = 'Status: Initializing...';
-    activeScript.textContent = 'mnist_classifier.py';
     tbBadge.classList.remove('hidden');
     wandbBadge.classList.remove('hidden');
 
-    addTimelineEvent("Loaded dataset 'ImageNet_Sample_Train' (50,000 samples)");
-    addTimelineEvent("Starting training loop script: mnist_classifier.py");
+    printConsole(`Starting python monitoring subprocess...`);
+    printConsole(`Streaming telemetry logs to ModelSight VS Code socket on localhost:12053`);
+    
+    addTimelineEvent(`Loaded script: ${currentFileName}`);
+    addTimelineEvent("GPU Engine activated. Allocated Tesla T4 device memory.");
 
     // Loop runs every 800ms
     simInterval = setInterval(runEpochStep, 800);
@@ -395,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stopBtn.classList.add('hidden');
     statusPulse.className = 'dot-active';
     statusText.textContent = 'Status: Paused';
-    addTimelineEvent("Training simulation execution paused manually by user.");
+    addTimelineEvent("Training session suspended by user request.");
   }
 
   function completeSimulation() {
@@ -415,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const li = document.createElement('li');
     li.className = 'history-item';
-    li.innerHTML = `<span>mnist_classifier.py</span> <span class="success">Acc: ${finalAccuracy}% (Loss: ${finalLoss})</span>`;
+    li.innerHTML = `<span>${currentFileName}</span> <span class="success">Acc: ${finalAccuracy}% (Loss: ${finalLoss})</span>`;
     historyList.appendChild(li);
     historyList.scrollTop = historyList.scrollHeight;
   }
@@ -431,6 +680,9 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSVGChart();
     }
   });
+
+  // Pre-load train_resnet.py on script load
+  selectScript('train_resnet.py');
 
 
   // --- Diagnostics Traceback Explainer Section ---
