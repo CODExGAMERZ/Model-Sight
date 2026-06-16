@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ModelSight - Local ML Training Monitor & Error Explainer</title>
+  
+  <!-- Favicon & App Icon -->
+  <link rel="icon" type="image/png" href="logo.png">
+  <link rel="apple-touch-icon" href="logo.png">
+  <meta property="og:image" content="logo.png">
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="ModelSight is a local-first ML training visualizer and traceback diagnostics explainer for PyTorch and TensorFlow. Monitor metrics in real-time.">
+  <meta name="keywords" content="Machine Learning, PyTorch, Deep Learning, TensorBoard, Weights & Biases, ML Debugger">
+  <meta name="author" content="CODExGAMERZ">
+  
+  <!-- Fonts & Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background Decorative Grid -->
+  <div class="grid-overlay" id="gridOverlay"></div>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar" id="navbar">
+    <div class="container navbar-container">
+      <a href="#" class="logo">
+        <img src="logo.png" alt="ModelSight Logo" class="logo-img">
+        ModelSight
+      </a>
+      <div class="nav-links">
+        <a href="#simulator" class="active">Live Dashboard</a>
+        <a href="#features">Features</a>
+        <a href="#diagnostics">Diagnostics</a>
+        <a href="#install">Install</a>
+      </div>
+      <div class="nav-actions">
+        <a href="#install" class="btn-nav-download">Get Extension</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero section-padding">
+    <div class="container">
+      <h1>Local ML Telemetry Monitor.<br><span class="text-gradient">Visualized and Explained.</span></h1>
+      <p>ModelSight is a visual dashboard extension that hooks into local PyTorch or TensorFlow training loops. Stream training metrics, detect overfitting alerts, and explain traceback errors in plain English—completely locally.</p>
+      
+      <div class="hero-ctas">
+        <a href="#simulator" class="btn-primary"><i class="fa-solid fa-desktop"></i> Launch Live Simulator</a>
+        <a href="#install" class="btn-secondary"><i class="fa-solid fa-download"></i> View on Marketplace</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive IDE Simulator Section -->
+  <section id="simulator" class="simulator-showcase">
+    <div class="container">
+      <div class="section-title">Experience ModelSight Live</div>
+      <p class="section-subtitle">Click the simulation buttons below to start a live mockup training run, inspect overfitting triggers, or paste tracebacks to test the diagnostics layer.</p>
+      
+      <!-- VS Code Extension Mockup Frame -->
+      <div class="vscode-frame" id="sightSimulator">
+        
+        <!-- VS Code Header/Tab Bar -->
+        <header class="vscode-header">
+          <div class="window-controls">
+            <span class="control-dot close"></span>
+            <span class="control-dot minimize"></span>
+            <span class="control-dot maximize"></span>
+          </div>
+          <div class="tab-title">
+            <i class="fa-solid fa-chart-line text-indigo"></i>
+            <span>ModelSight Telemetry</span>
+            <span class="tab-close">&times;</span>
+          </div>
+          <div class="vscode-actions">
+            <!-- Simulation Controllers -->
+            <button class="btn-sim-control success" id="sim-btn-start" title="Start Training Simulation"><i class="fa-solid fa-play"></i> Run Sim</button>
+            <button class="btn-sim-control danger hidden" id="sim-btn-stop" title="Stop Simulation"><i class="fa-solid fa-square"></i> Stop</button>
+            <button class="btn-sim-control" id="sim-btn-clear" title="Clear Telemetry"><i class="fa-solid fa-trash"></i> Reset</button>
+          </div>
+        </header>
+
+        <!-- VS Code Body Wrapper -->
+        <div class="vscode-body-wrapper">
+          
+          <!-- VS Code Left Activity Bar -->
+          <aside class="vscode-activitybar">
+            <div class="activity-top">
+              <div class="activity-item"><i class="fa-regular fa-copy"></i></div>
+              <div class="activity-item"><i class="fa-solid fa-magnifying-glass"></i></div>
+              <div class="activity-item"><i class="fa-solid fa-code-branch"></i></div>
+              <div class="activity-item active"><i class="fa-solid fa-chart-line"></i></div>
+              <div class="activity-item"><i class="fa-solid fa-bug"></i></div>
+            </div>
+            <div class="activity-bottom">
+              <div class="activity-item"><i class="fa-solid fa-gear"></i></div>
+            </div>
+          </aside>
+
+          <!-- Main VS Code Editor Body -->
+          <div class="vscode-body">
+            
+            <!-- Dashboard Top Control Header Bar -->
+            <div class="dashboard-header-bar">
+              <div class="brand-badge">
+                <span class="dot-active pulsing" id="status-pulse-dot"></span>
+                <span id="status-text">Status: Idle</span>
+              </div>
+              <div class="header-status-items">
+                <span class="status-badge hidden" id="tb-badge"><i class="fa-solid fa-link"></i> TensorBoard</span>
+                <span class="status-badge hidden" id="wandb-badge"><i class="fa-solid fa-link"></i> W&B</span>
+                <span class="active-script-label">Active Script: <code id="active-script-name">None</code></span>
+              </div>
+            </div>
+
+            <!-- Dashboard Workspace Tab Nav -->
+            <div class="dashboard-tabs">
+              <button class="tab-btn active" data-tab="telemetry"><i class="fa-solid fa-chart-line"></i> Live Telemetry</button>
+              <button class="tab-btn" data-tab="dataset"><i class="fa-solid fa-database"></i> Dataset Profile</button>
+              <button class="tab-btn" data-tab="comparison"><i class="fa-solid fa-code-compare"></i> Run Comparison</button>
+            </div>
+
+            <!-- Main Workspace Dashboard Grid -->
+            <div class="dashboard-viewport">
+              
+              <!-- Tab 1: Live Telemetry Dashboard -->
+              <div id="tab-telemetry" class="tab-pane active">
+                <div class="dashboard-split-layout">
+                  
+                  <!-- Left Side: Metrics Grid + Training Curves -->
+                  <div class="telemetry-left">
+                    <div class="metrics-grid">
+                      <div class="metric-card" id="card-loss">
+                        <div class="label">Current Loss</div>
+                        <div class="value" id="val-loss">-</div>
+                        <div class="footer" id="footer-loss">Waiting for telemetry</div>
+                      </div>
+                      
+                      <div class="metric-card" id="card-accuracy">
+                        <div class="label">Accuracy</div>
+                        <div class="value" id="val-accuracy">-</div>
+                        <div class="card-progress">
+                          <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="bar-accuracy" style="width: 0%"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="metric-card" id="card-lr">
+                        <div class="label">Learning Rate</div>
+                        <div class="value" id="val-lr">-</div>
+                        <div class="footer" id="footer-lr">Optimizer scale</div>
+                      </div>
+
+                      <div class="metric-card" id="card-hardware">
+                        <div class="label">GPU Usage</div>
+                        <div class="value" id="val-gpu">-</div>
+                        <div class="gpu-details">
+                          <span id="gpu-name">Tesla T4</span>
+                          <span id="gpu-temp">Temp: -</span>
+                        </div>
+                      </div>
+
+                      <div class="metric-card" id="card-ram">
+                        <div class="label">RAM Usage</div>
+                        <div class="value" id="val-ram">-</div>
+                        <div class="card-progress">
+                          <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" id="bar-ram" style="width: 0%"></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="metric-card" id="card-overfit">
+                        <div class="label">Overfitting Risk</div>
+                        <div class="value" id="val-overfit">Low</div>
+                        <div class="card-progress">
+                          <div class="progress-bar-bg">
+                            <div class="progress-bar-fill success" id="bar-overfit" style="width: 0%"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Progress Banner -->
+                    <div class="card progress-banner" id="progress-banner">
+                      <div class="progress-label-group">
+                        <strong>Simulation Progress</strong>
+                        <span id="val-eta">Calculating ETA...</span>
+                      </div>
+                      <div class="progress-bar-container">
+                        <div class="progress-bar-fill glowing" id="bar-progress" style="width: 0%"></div>
+                      </div>
+                      <div class="progress-details">
+                        <span id="progress-text">0% Complete</span>
+                        <span id="progress-epochs">Epochs 0/30</span>
+                      </div>
+                    </div>
+
+                    <!-- Telemetry Curve Charts -->
+                    <div class="card chart-card">
+                      <div class="chart-header">
+                        <h3>Loss curves</h3>
+                        <div class="chart-toggle-buttons">
+                          <button class="chart-toggle active" data-chart="loss">Loss</button>
+                          <button class="chart-toggle" data-chart="accuracy">Accuracy</button>
+                          <button class="chart-toggle" data-chart="lr">LR</button>
+                        </div>
+                      </div>
+                      <div class="chart-viewport">
+                        <svg id="live-chart" width="100%" height="220"></svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Right Side: Error Explainer Sandbox & History -->
+                  <div class="telemetry-right">
+                    
+                    <!-- Traceback sandbox explainer card -->
+                    <div class="card error-explainer-card">
+                      <h3><i class="fa-solid fa-shield-halved text-indigo"></i> ML Error Explainer Sandbox</h3>
+                      
+                      <!-- Default State: Diagnostic Input Box -->
+                      <div id="explainer-input-area" class="explainer-input-area active">
+                        <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:8px;">Paste a Python/PyTorch traceback below to see the offline diagnostics explain the crash in plain English.</p>
+                        <textarea id="traceback-textarea" placeholder="Traceback (most recent call last):
+  File 'train.py', line 45, in <module>
+    loss = criterion(outputs, targets)
+RuntimeError: Expected input batch_size (32) to match target batch_size (8)..." style="width:100%; height:90px; font-family:var(--font-mono); font-size:0.7rem; background:#07080b; border:1px solid var(--border-color); border-radius:4px; padding:8px; color:var(--text-primary); resize:none; outline:none;"></textarea>
+                        <button class="btn-explain-traceback" id="btn-run-explainer" style="width:100%; margin-top:8px; background:var(--accent-gradient); border:none; padding:8px; color:#06070a; font-weight:800; border-radius:4px; cursor:pointer; font-size:0.75rem;"><i class="fa-solid fa-wand-magic-sparkles"></i> Diagnose Exception</button>
+                      </div>
+
+                      <!-- Diagnosed Active State -->
+                      <div id="explainer-diagnostic-area" class="explainer-diagnostic-area hidden">
+                        <div class="error-banner">
+                          <span class="warning-triangle">⚠️</span>
+                          <div>
+                            <h4 id="diag-category">Tensor Dimension Mismatch</h4>
+                            <p class="err-raw-line" id="diag-raw-line"></p>
+                          </div>
+                        </div>
+                        <div class="diagnostic-block">
+                          <h5>Why it happened</h5>
+                          <p id="diag-why"></p>
+                        </div>
+                        <div class="diagnostic-block">
+                          <h5>Remediation Guide</h5>
+                          <ol id="diag-steps" class="checklist">
+                            <!-- Dynamic -->
+                          </ol>
+                        </div>
+                        <button class="btn-reset-explainer" id="btn-reset-explainer" style="width:100%; margin-top:10px; background:rgba(255,255,255,0.03); border:1px solid var(--border-color); color:var(--text-primary); padding:6px; font-weight:600; border-radius:4px; cursor:pointer; font-size:0.75rem;">Clear & Diagnose Another</button>
+                      </div>
+                    </div>
+
+                    <!-- Run History -->
+                    <div class="card run-history-card" style="margin-top: 10px;">
+                      <div class="history-header">
+                        <h4>Run History</h4>
+                        <button class="btn-clear-history" id="btn-clear-history">Clear</button>
+                      </div>
+                      <div class="history-scroll">
+                        <ul class="history-list" id="history-list">
+                          <li class="history-empty" id="history-empty">No training logs recorded. Run a simulation to start tracking runs.</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <!-- Checkpoints timeline -->
+                    <div class="card checkpoints-card" style="margin-top: 10px;">
+                      <h4>Checkpoints & Events</h4>
+                      <div class="timeline-scroll">
+                        <ul class="timeline" id="timeline-list">
+                          <li class="timeline-empty" id="timeline-empty-item">No timeline logs recorded yet.</li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 2: Dataset Profile -->
+              <div id="tab-dataset" class="tab-pane">
+                <div class="dataset-profile-layout card bg-darker">
+                  <div class="dataset-profile-header">
+                    <h2>Dataset Metadata</h2>
+                    <span class="badge badge-indigo" id="dataset-name-badge">ImageNet_Sample_Train</span>
+                  </div>
+                  
+                  <div class="metrics-grid" style="grid-template-columns: repeat(2, 1fr); margin-top:12px;">
+                    <div class="metric-card">
+                      <div class="label">Total Samples</div>
+                      <div class="value" id="dataset-samples">50,000</div>
+                    </div>
+                    <div class="metric-card">
+                      <div class="label">Feature Vector Shape</div>
+                      <div class="value" id="dataset-shape" style="color:var(--accent-secondary)">[3, 224, 224]</div>
+                    </div>
+                  </div>
+
+                  <div class="dataset-split">
+                    <div class="dataset-left">
+                      <h4>Class Counts</h4>
+                      <div class="table-scroll" style="max-height:180px;">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Class Label</th>
+                              <th>Samples</th>
+                              <th>Percentage</th>
+                            </tr>
+                          </thead>
+                          <tbody id="dataset-classes-tbody">
+                            <!-- Prepopulated -->
+                            <tr><td>0 - Airplane</td><td>5,000</td><td>10%</td></tr>
+                            <tr><td>1 - Automobile</td><td>5,000</td><td>10%</td></tr>
+                            <tr><td>2 - Bird</td><td>5,000</td><td>10%</td></tr>
+                            <tr><td>3 - Cat</td><td>5,000</td><td>10%</td></tr>
+                            <tr><td>4 - Deer</td><td>5,000</td><td>10%</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    
+                    <div class="dataset-right">
+                      <h4>Label Distribution Chart</h4>
+                      <div class="distribution-chart-box">
+                        <svg id="dataset-distribution-svg" width="100%" height="180">
+                          <!-- Draw simple label distributions -->
+                          <rect x="10%" y="30" width="80%" height="16" fill="var(--accent-primary)" rx="2"></rect>
+                          <text x="12%" y="42" font-size="9" fill="#000" font-weight="700">Balanced Label Set (10% per class)</text>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tab 3: Run Comparison -->
+              <div id="tab-comparison" class="tab-pane">
+                <div class="card bg-darker">
+                  <h2>Run Comparison Matrix</h2>
+                  <p style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:12px;">Inspect validation losses, hyperparameters, and run status side-by-side.</p>
+                  
+                  <div class="table-scroll">
+                    <table style="width: 100%;">
+                      <thead>
+                        <tr>
+                          <th>Parameter / Result</th>
+                          <th>Active Run (Simulated)</th>
+                          <th>Baseline Run (Run_082)</th>
+                          <th>Test Run (Run_081)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr><td><strong>Epochs</strong></td><td id="comp-epoch">-</td><td>30/30</td><td>12/30 (Crashed)</td></tr>
+                        <tr><td><strong>Learning Rate</strong></td><td id="comp-lr">-</td><td>0.001</td><td>0.005</td></tr>
+                        <tr><td><strong>Batch Size</strong></td><td>32</td><td>32</td><td>64</td></tr>
+                        <tr><td><strong>Optimizers</strong></td><td>AdamW</td><td>AdamW</td><td>SGD</td></tr>
+                        <tr><td><strong>Final Loss</strong></td><td id="comp-loss">-</td><td>0.125</td><td>0.542</td></tr>
+                        <tr><td><strong>Accuracy</strong></td><td id="comp-acc">-</td><td>94.8%</td><td>81.2%</td></tr>
+                        <tr><td><strong>Risk Assessment</strong></td><td id="comp-risk">-</td><td>Optimal</td><td>High Skew (NaN)</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Console Log Bottom Panel -->
+            <footer class="console-panel">
+              <div class="console-header">
+                <span><i class="fa-solid fa-terminal text-indigo"></i> Raw Telemetry Output</span>
+                <button class="console-toggle-btn" id="btn-toggle-console">Collapse</button>
+              </div>
+              <div class="console-body" id="console-body">
+                <pre id="console-log-pre">Welcome to ModelSight. Run a simulation to start streaming Python logs here...</pre>
+              </div>
+            </footer>
+
+          </div>
+
+        </div>
+
+        <!-- VS Code Footer Status Bar -->
+        <footer class="vscode-footer">
+          <div class="footer-left">
+            <span class="status-item bg-indigo"><i class="fa-solid fa-code-branch"></i> main</span>
+            <span class="status-item">Python 3.10.12 (venv)</span>
+          </div>
+          <div class="footer-right">
+            <span class="status-item" id="footer-status-gpu">GPU: Tesla T4</span>
+            <span class="status-item">Port: 12053</span>
+            <span class="status-item">JSON-Stream</span>
+          </div>
+        </footer>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid Section -->
+  <section id="features" class="section-padding bg-darker">
+    <div class="container">
+      <div class="section-title">Telemetry Visualizer Features</div>
+      <p class="section-subtitle">ModelSight delivers high-resolution analytics and diagnostics directly inside your text editor workspace.</p>
+      
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="icon">📈</div>
+          <h3>Real-time Streaming</h3>
+          <p>Streams loss, accuracy, perplexity, and learning rates with low-overhead JSON sockets in real-time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🛡️</div>
+          <h3>Overfitting Detection</h3>
+          <p>Flags divergence alerts early if validation loss curves separate from training gradients.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📟</div>
+          <h3>Hardware Monitors</h3>
+          <p>Monitors hardware constraints including GPU power, core temperatures, VRAM, and host RAM.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔬</div>
+          <h3>Traceback Diagnostician</h3>
+          <p>Decodes Python tracebacks into descriptive error summaries and step-by-step remediation checklists.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Traceback Explainer Details -->
+  <section id="diagnostics" class="section-padding">
+    <div class="container">
+      <div class="section-title">Offline Diagnostics Library</div>
+      <p class="section-subtitle">ModelSight parses core ML exceptions offline with rule-based heuristics. Examples of handled issues:</p>
+      
+      <div class="diagnostics-showcase-grid">
+        <div class="diag-card card">
+          <h4>CUDA Out of Memory (OOM)</h4>
+          <p>Triggered when tensor sizes or batch weights exceed physical VRAM. Remediation suggests gradient accumulation or batch size reductions.</p>
+        </div>
+        
+        <div class="diag-card card">
+          <h4>Dimension / Shape Mismatches</h4>
+          <p>Identifies matrix multiplication shape conflicts or classification target indices mismatch (e.g. 1-indexed targets instead of 0-indexed targets).</p>
+        </div>
+
+        <div class="diag-card card">
+          <h4>Numerical Instability (NaN Loss)</h4>
+          <p>Detects exploding gradients or division by zero in custom losses, recommending learning rate decays and gradient clipping.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Installation Section -->
+  <section id="install" class="section-padding bg-darker">
+    <div class="container">
+      <div class="section-title">Install ModelSight Extension</div>
+      <p class="section-subtitle">Streamline your deep learning feedback loop. Get the extension inside VS Code.</p>
+      
+      <div class="install-card">
+        <div class="install-header">
+          <span>VS Code Marketplace</span>
+          <i class="fa-solid fa-terminal"></i>
+        </div>
+        <div class="install-body">
+          <code>ext install CODExGAMERZ.modelsight</code>
+          <button class="btn-copy-command" onclick="navigator.clipboard.writeText('ext install CODExGAMERZ.modelsight'); alert('Command copied to clipboard!')"><i class="fa-solid fa-copy"></i> Copy</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 ModelSight. Built by <a href="https://github.com/CODExGAMERZ">CODExGAMERZ</a>. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
